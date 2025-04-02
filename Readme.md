@@ -3,9 +3,10 @@
 Tired of writing git commit messages? Let AI do it for you! ✨
 
 `commiat` is a simple CLI tool that:
-1.  Analyzes your staged git changes (`git diff --staged`).
-2.  Generates a conventional commit message using the OpenRouter API (defaults to Google Gemini Flash 1.5 ⚡).
-3.  Prompts you to confirm ✅, adjust 📝, or cancel ❌ the commit.
+1.  Optionally stages all changes (`git add .`) if you use the `-a` flag.
+2.  Analyzes your staged git changes (`git diff --staged`).
+3.  Generates a conventional commit message using the OpenRouter API (defaults to Google Gemini Flash 1.5 ⚡).
+4.  Prompts you to confirm ✅, adjust 📝, or cancel ❌ the commit.
 
 ## 🚀 Installation
 
@@ -47,13 +48,15 @@ Tired of writing git commit messages? Let AI do it for you! ✨
 
 ## ▶️ Usage
 
-1.  **Stage your changes:**
+1.  **Option A: Stage changes manually**
     ```bash
     git add <your-files...>
-    ```
-2.  **Run commiat:**
-    ```bash
     commiat
+    ```
+2.  **Option B: Stage all changes automatically**
+    Use the `-a` or `--add-all` flag:
+    ```bash
+    commiat -a
     ```
 3.  **Follow the prompts:**
     Confirm, adjust, or cancel the suggested commit message.

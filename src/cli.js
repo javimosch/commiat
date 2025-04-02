@@ -105,9 +105,16 @@ async function promptUser(initialMessage) {
   }
 }
 
-async function main() {
+async function main(options) { // Accept options object
   console.log('Commiat CLI - Generating commit message...');
   try {
+    // Check if -a flag is used
+    if (options.addAll) {
+      console.log('Staging all changes (`git add .`)...');
+      await git.add('.');
+      console.log('Changes staged.');
+    }
+
     const diff = await getStagedDiff();
     // console.log('\n--- Staged Diff ---');
     // console.log(diff); // Keep this commented out unless debugging
@@ -137,6 +144,7 @@ async function main() {
 program
   .version('1.0.0')
   .description('Auto-generate commit messages for staged changes')
-  .action(main);
+  .option('-a, --add-all', 'Stage all changes (`git add .`) before committing') // Add the option
+  .action(main); // Pass program options to main
 
 program.parse(process.argv);
