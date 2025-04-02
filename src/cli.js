@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-require('dotenv').config();
+require('dotenv').config(); // Loads local .env file first
 const { program } = require('commander');
 const simpleGit = require('simple-git');
 const axios = require('axios');
@@ -8,9 +8,12 @@ const inquirer = require('inquirer');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { spawn } = require('child_process');
+const dotenv = require('dotenv'); // Added for parsing global config
 
 const git = simpleGit();
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const DEFAULT_MODEL = 'google/gemini-flash-1.5';
 
 // --- Configuration File Logic ---
 const CONFIG_DIR = path.join(os.homedir(), '.commiat');
@@ -22,17 +25,51 @@ function ensureConfigDirExists() {
   }
 }
 
-function saveApiKeyToConfig(apiKey) {
+function ensureConfigFileExists() {
   ensureConfigDirExists();
-  fs.writeFileSync(CONFIG_PATH, apiKey, 'utf8');
-  console.log(`API Key saved to ${CONFIG_PATH}`);
+  if (!fs.existsSync(CONFIG_PATH)) {
+    fs.writeFileSync(CONFIG_PATH, '', 'utf8');
+    console.log(`Created empty config file at ${CONFIG_PATH}`);
+  }
 }
 
-function loadApiKeyFromConfig() {
-  if (fs.existsSync(CONFIG_PATH)) {
-    return fs.readFileSync(CONFIG_PATH, 'utf8').trim();
+// Loads the global config file and parses it into an object
+function loadGlobalConfig() {
+  ensureConfigFileExists(); // Ensure it exists before reading
+  try {
+    const fileContent = fs.readFileSync(CONFIG_PATH, 'utf8');
+    return dotenv.parse(fileContent); // Use dotenv to parse
+  } catch (error) {
+    console.error(`Error reading global config file ${CONFIG_PATH}:`, error);
+    return {}; // Return empty object on error
   }
-  return null;
+}
+
+// Saves the entire config object back to the file in .env format
+function saveGlobalConfig(configObj) {
+  ensureConfigDirExists();
+  let fileContent = '';
+  for (const key in configObj) {
+    if (Object.hasOwnProperty.call(configObj, key)) {
+      // Basic escaping for values that might contain special chars (optional, adjust as needed)
+      const value = configObj[key];
+      const needsQuotes = /\s|#|"|'|=/.test(value);
+      const formattedValue = needsQuotes ? `"${value.replace(/"/g, '\\"')}"` : value;
+      fileContent += `${key}=${formattedValue}\n`;
+    }
+  }
+  try {
+    fs.writeFileSync(CONFIG_PATH, fileContent.trim(), 'utf8');
+  } catch (error) {
+    console.error(`Error writing global config file ${CONFIG_PATH}:`, error);
+  }
+}
+
+// Updates a specific key in the global config
+function updateGlobalConfig(key, value) {
+  const currentConfig = loadGlobalConfig();
+  currentConfig[key] = value;
+  saveGlobalConfig(currentConfig);
 }
 
 async function promptForApiKey() {
@@ -47,25 +84,53 @@ async function promptForApiKey() {
     },
   ]);
   const trimmedKey = apiKey.trim();
-  saveApiKeyToConfig(trimmedKey);
+  // Save using the new method
+  updateGlobalConfig('OPENROUTER_API_KEY', trimmedKey);
+  console.log(`API Key saved to ${CONFIG_PATH}`);
   return trimmedKey;
 }
 
 async function getApiKey() {
+  // 1. Check environment variable (from local .env or shell)
   const envApiKey = process.env.OPENROUTER_API_KEY;
   if (envApiKey && envApiKey !== 'YOUR_API_KEY_HERE') {
     return envApiKey;
   }
 
-  const configApiKey = loadApiKeyFromConfig();
+  // 2. Check global config file
+  const globalConfig = loadGlobalConfig();
+  const configApiKey = globalConfig.OPENROUTER_API_KEY;
   if (configApiKey) {
     return configApiKey;
   }
 
+  // 3. Prompt user
   return await promptForApiKey();
 }
-// --- End Configuration File Logic ---
 
+function openConfigInEditor() {
+  ensureConfigFileExists();
+  const editor = process.env.EDITOR || 'nano';
+  console.log(`Opening ${CONFIG_PATH} in ${editor}...`);
+  try {
+    const child = spawn(editor, [CONFIG_PATH], { stdio: 'inherit', detached: true });
+    child.on('error', (err) => {
+      console.error(`\n❌ Failed to start editor '${editor}': ${err.message}`);
+      console.error(`Please ensure '${editor}' is installed and in your PATH, or set the EDITOR environment variable.`);
+      process.exit(1);
+    });
+    child.on('exit', (code, signal) => {
+      if (code === 0) {
+        console.log(`\nEditor closed. Config file saved (hopefully 😉).`);
+      } else {
+        console.warn(`\nEditor exited with code ${code} (signal: ${signal}).`);
+      }
+    });
+  } catch (error) {
+    console.error(`\n❌ Error spawning editor: ${error.message}`);
+    process.exit(1);
+  }
+}
 
 async function getStagedDiff() {
   const diff = await git.diff(['--staged']);
@@ -82,24 +147,23 @@ async function generateCommitMessage(diff) {
     throw new Error('Could not obtain OpenRouter API key.');
   }
 
-  const model = process.env.OPENROUTER_MODEL || 'google/gemini-flash-1.5';
+  // Determine model precedence: local .env > global config > default
+  const globalConfig = loadGlobalConfig();
+  const model = process.env.OPENROUTER_MODEL || globalConfig.OPENROUTER_MODEL || DEFAULT_MODEL;
+  console.log(`Using model: ${model}`); // Log the model being used
 
   const prompt = `Generate a concise Git commit message based on the following diff. Follow conventional commit format (e.g., feat: ..., fix: ..., chore: ...). Describe the change, not just the files changed.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
   try {
     const response = await axios.post(
       OPENROUTER_API_URL,
-      {
-        model: model,
-        messages: [{ role: 'user', content: prompt }],
-      },
-      {
-        headers: {
+      { model: model, messages: [{ role: 'user', content: prompt }] },
+      { headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'http://localhost',
           'X-Title': 'Commiat CLI',
-        },
+        }
       }
     );
 
@@ -116,6 +180,9 @@ async function generateCommitMessage(diff) {
       console.error('API Error Data:', error.response.data);
       if (error.response.status === 401) {
         console.error('\n❌ Authentication failed. Your API key might be invalid.');
+        // Consider clearing the key if auth fails?
+        // updateGlobalConfig('OPENROUTER_API_KEY', '');
+        // console.log(`Cleared potentially invalid key from ${CONFIG_PATH}. Please run again.`);
       }
       throw new Error(`OpenRouter API request failed: ${error.response.status} ${error.response.data?.error?.message || ''}`);
     } else if (error.request) {
@@ -161,7 +228,7 @@ async function promptUser(initialMessage) {
   }
 }
 
-async function main(options) {
+async function mainAction(options) {
   console.log('Commiat CLI - Generating commit message...');
   try {
     if (options.addAll) {
@@ -171,10 +238,6 @@ async function main(options) {
     }
 
     const diff = await getStagedDiff();
-    // console.log('\n--- Staged Diff ---');
-    // console.log(diff);
-    // console.log('--- End Diff ---\n');
-
     const initialCommitMessage = await generateCommitMessage(diff);
 
     const finalCommitMessage = await promptUser(initialCommitMessage);
@@ -196,8 +259,15 @@ async function main(options) {
 
 program
   .version('1.0.0')
-  .description('Auto-generate commit messages for staged changes')
+  .description('Auto-generate commit messages for staged changes');
+
+program
   .option('-a, --add-all', 'Stage all changes (`git add .`) before committing')
-  .action(main);
+  .action(mainAction);
+
+program
+  .command('config')
+  .description('Open the global configuration file (~/.commiat/config) in your default editor')
+  .action(openConfigInEditor);
 
 program.parse(process.argv);
