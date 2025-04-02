@@ -53,6 +53,11 @@ Tired of writing git commit messages? Let AI do it for you! ✨
     commiat config
     ```
     This opens `~/.commiat/config` in your default editor. You can set `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` here.
+*   **Testing Configuration:** You can test your API key and model configuration using:
+    ```bash
+    commiat config --test
+    ```
+    This will send a simple "Say HI" request to the configured OpenRouter model and display the input, output, and model used.
 *   **Project-Specific Settings:** Use a local `.env` file in your project for settings you only want to apply to that project.
 
 ## ▶️ Usage
@@ -75,6 +80,10 @@ Tired of writing git commit messages? Let AI do it for you! ✨
 *   **Edit Global Configuration:**
     ```bash
     commiat config
+    ```
+*   **Test API Configuration:**
+    ```bash
+    commiat config --test
     ```
 
 Happy committing! 🎉

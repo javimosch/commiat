@@ -257,6 +257,62 @@ async function mainAction(options) {
   }
 }
 
+async function testLlmCompletion() {
+  console.log('🧪 Testing LLM completion...');
+  const apiKey = await getApiKey();
+  if (!apiKey) {
+    console.error('❌ Could not obtain OpenRouter API key. Configure it first using `commiat` or `commiat config`.');
+    process.exit(1);
+  }
+
+  const globalConfig = loadGlobalConfig();
+  const model = process.env.OPENROUTER_MODEL || globalConfig.OPENROUTER_MODEL || DEFAULT_MODEL;
+  const testPrompt = "Say HI";
+
+  console.log(`\nInput:`);
+  console.log(`- Prompt: "${testPrompt}"`);
+  console.log(`- Model: ${model}`);
+
+  try {
+    const response = await axios.post(
+      OPENROUTER_API_URL,
+      { model: model, messages: [{ role: 'user', content: testPrompt }] },
+      { headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'http://localhost', // Required by OpenRouter
+          'X-Title': 'Commiat CLI Test', // Optional
+        }
+      }
+    );
+
+    if (response.data && response.data.choices && response.data.choices.length > 0) {
+      const output = response.data.choices[0].message.content.trim();
+      console.log(`\nOutput:`);
+      console.log(`- Response: "${output}"`);
+      console.log('\n✅ Test successful!');
+    } else {
+      console.error('\n❌ Test failed: No valid response received from API.');
+      console.error('API Response Data:', response.data);
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('\n❌ Test failed: API request error.');
+    if (error.response) {
+      console.error('- Status:', error.response.status);
+      console.error('- Data:', error.response.data);
+      if (error.response.status === 401) {
+        console.error('\nHint: Authentication failed. Check your API key.');
+      }
+    } else if (error.request) {
+      console.error('- Error: No response received from API.');
+    } else {
+      console.error('- Error:', error.message);
+    }
+    process.exit(1);
+  }
+}
+
 program
   .version('1.0.0')
   .description('Auto-generate commit messages for staged changes');
@@ -267,7 +323,14 @@ program
 
 program
   .command('config')
-  .description('Open the global configuration file (~/.commiat/config) in your default editor')
-  .action(openConfigInEditor);
+  .description('Manage configuration. Opens editor by default, use --test to check API.')
+  .option('-t, --test', 'Test the configured LLM API connection and model')
+  .action(async (options) => {
+    if (options.test) {
+      await testLlmCompletion();
+    } else {
+      openConfigInEditor();
+    }
+  });
 
 program.parse(process.argv);
