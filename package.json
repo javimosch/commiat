@@ -1,0 +1,22 @@
+{
+  "name": "commiat",
+  "version": "1.0.0",
+  "description": "I need a NodeJS CLI that proposes me to commit all pending changes on my git repo and auto-generates the commit message.",
+  "main": "index.js",
+  "bin": {
+    "commiat": "src/cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.8.4",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "inquirer": "^12.5.0",
+    "simple-git": "^3.27.0"
+  }
+}
