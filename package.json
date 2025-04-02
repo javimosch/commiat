@@ -16,7 +16,7 @@
     "axios": "^1.8.4",
     "commander": "^13.1.0",
     "dotenv": "^16.4.7",
-    "inquirer": "^12.5.0",
+    "inquirer": "^8.2.6",
     "simple-git": "^3.27.0"
   }
 }
