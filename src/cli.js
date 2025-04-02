@@ -5,9 +5,67 @@ const { program } = require('commander');
 const simpleGit = require('simple-git');
 const axios = require('axios');
 const inquirer = require('inquirer');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 const git = simpleGit();
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+// --- Configuration File Logic ---
+const CONFIG_DIR = path.join(os.homedir(), '.commiat');
+const CONFIG_PATH = path.join(CONFIG_DIR, 'config');
+
+function ensureConfigDirExists() {
+  if (!fs.existsSync(CONFIG_DIR)) {
+    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  }
+}
+
+function saveApiKeyToConfig(apiKey) {
+  ensureConfigDirExists();
+  fs.writeFileSync(CONFIG_PATH, apiKey, 'utf8');
+  console.log(`API Key saved to ${CONFIG_PATH}`);
+}
+
+function loadApiKeyFromConfig() {
+  if (fs.existsSync(CONFIG_PATH)) {
+    return fs.readFileSync(CONFIG_PATH, 'utf8').trim();
+  }
+  return null;
+}
+
+async function promptForApiKey() {
+  console.log('OpenRouter API key not found.');
+  const { apiKey } = await inquirer.prompt([
+    {
+      type: 'password',
+      name: 'apiKey',
+      message: 'Please enter your OpenRouter API key:',
+      mask: '*',
+      validate: (input) => input.trim().length > 0 ? true : 'API key cannot be empty.',
+    },
+  ]);
+  const trimmedKey = apiKey.trim();
+  saveApiKeyToConfig(trimmedKey);
+  return trimmedKey;
+}
+
+async function getApiKey() {
+  const envApiKey = process.env.OPENROUTER_API_KEY;
+  if (envApiKey && envApiKey !== 'YOUR_API_KEY_HERE') {
+    return envApiKey;
+  }
+
+  const configApiKey = loadApiKeyFromConfig();
+  if (configApiKey) {
+    return configApiKey;
+  }
+
+  return await promptForApiKey();
+}
+// --- End Configuration File Logic ---
+
 
 async function getStagedDiff() {
   const diff = await git.diff(['--staged']);
@@ -19,12 +77,12 @@ async function getStagedDiff() {
 }
 
 async function generateCommitMessage(diff) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
-    throw new Error('OpenRouter API key not found or not set. Please set OPENROUTER_API_KEY in your .env file.');
+  const apiKey = await getApiKey();
+  if (!apiKey) {
+    throw new Error('Could not obtain OpenRouter API key.');
   }
 
-  const model = process.env.OPENROUTER_MODEL || 'google/gemini-flash-1.5'; // Default model
+  const model = process.env.OPENROUTER_MODEL || 'google/gemini-flash-1.5';
 
   const prompt = `Generate a concise Git commit message based on the following diff. Follow conventional commit format (e.g., feat: ..., fix: ..., chore: ...). Describe the change, not just the files changed.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
@@ -39,9 +97,8 @@ async function generateCommitMessage(diff) {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          // Recommended headers by OpenRouter
-          'HTTP-Referer': 'http://localhost', // Replace with your app URL if deployed
-          'X-Title': 'Commiat CLI', // Replace with your app name
+          'HTTP-Referer': 'http://localhost',
+          'X-Title': 'Commiat CLI',
         },
       }
     );
@@ -55,16 +112,15 @@ async function generateCommitMessage(diff) {
     }
   } catch (error) {
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       console.error('API Error Status:', error.response.status);
       console.error('API Error Data:', error.response.data);
+      if (error.response.status === 401) {
+        console.error('\n❌ Authentication failed. Your API key might be invalid.');
+      }
       throw new Error(`OpenRouter API request failed: ${error.response.status} ${error.response.data?.error?.message || ''}`);
     } else if (error.request) {
-      // The request was made but no response was received
       throw new Error('No response received from OpenRouter API.');
     } else {
-      // Something happened in setting up the request that triggered an Error
       throw new Error(`Error setting up OpenRouter API request: ${error.message}`);
     }
   }
@@ -91,7 +147,7 @@ async function promptUser(initialMessage) {
     } else if (action === 'adjust') {
       const { adjustedMessage } = await inquirer.prompt([
         {
-          type: 'editor', // Opens default editor for easier multi-line editing
+          type: 'editor',
           name: 'adjustedMessage',
           message: 'Adjust the commit message:',
           default: currentMessage,
@@ -99,16 +155,15 @@ async function promptUser(initialMessage) {
         },
       ]);
       currentMessage = adjustedMessage.trim();
-    } else { // action === 'cancel'
+    } else {
       return null;
     }
   }
 }
 
-async function main(options) { // Accept options object
+async function main(options) {
   console.log('Commiat CLI - Generating commit message...');
   try {
-    // Check if -a flag is used
     if (options.addAll) {
       console.log('Staging all changes (`git add .`)...');
       await git.add('.');
@@ -117,7 +172,7 @@ async function main(options) { // Accept options object
 
     const diff = await getStagedDiff();
     // console.log('\n--- Staged Diff ---');
-    // console.log(diff); // Keep this commented out unless debugging
+    // console.log(diff);
     // console.log('--- End Diff ---\n');
 
     const initialCommitMessage = await generateCommitMessage(diff);
@@ -130,12 +185,10 @@ async function main(options) { // Accept options object
     } else {
       console.log('\n❌ Commit cancelled.');
     }
-
   } catch (error) {
     console.error('\n❌ Error:', error.message);
-    // Add more detailed error logging if needed, e.g., for API errors caught in generateCommitMessage
     if (error.response && error.response.data) {
-        console.error('API Error Details:', error.response.data);
+      console.error('API Error Details:', error.response.data);
     }
     process.exit(1);
   }
@@ -144,7 +197,7 @@ async function main(options) { // Accept options object
 program
   .version('1.0.0')
   .description('Auto-generate commit messages for staged changes')
-  .option('-a, --add-all', 'Stage all changes (`git add .`) before committing') // Add the option
-  .action(main); // Pass program options to main
+  .option('-a, --add-all', 'Stage all changes (`git add .`) before committing')
+  .action(main);
 
 program.parse(process.argv);

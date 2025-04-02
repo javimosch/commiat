@@ -27,24 +27,30 @@ Tired of writing git commit messages? Let AI do it for you! ✨
 
 ## ⚙️ Configuration
 
+`commiat` needs your OpenRouter API key to function. It looks for the key in the following order:
+
+1.  **Environment Variable:** `OPENROUTER_API_KEY` (set in your shell or a local `.env` file).
+2.  **Global Config File:** Reads the key from `~/.commiat/config`.
+3.  **Prompt:** If the key is not found in the above locations, `commiat` will prompt you to enter it securely. The entered key will then be saved to `~/.commiat/config` for future use.
+
+**Steps:**
+
 1.  **Get an OpenRouter API Key:**
     Sign up at [OpenRouter.ai](https://openrouter.ai/) and get your API key.
-2.  **Create a `.env` file:**
-    Copy the example file:
-    ```bash
-    cp .env.example .env # Or create .env manually
-    ```
-3.  **Add your API key:**
-    Open the `.env` file and paste your key:
+2.  **Run `commiat`:**
+    The first time you run it (without the key set in `.env`), it will prompt you for the key and save it globally.
+    *Alternatively*, you can create a `.env` file in the project directory and add the key there:
     ```
     OPENROUTER_API_KEY=YOUR_API_KEY_HERE
     ```
-4.  **(Optional) Specify a different model:**
-    You can choose any chat model available on OpenRouter by adding/uncommenting this line in `.env`:
-    ```
-    # OPENROUTER_MODEL=anthropic/claude-3-haiku
-    ```
-    If not specified, it defaults to `google/gemini-flash-1.5`.
+    This `.env` file takes precedence over the global config.
+
+**(Optional) Specify a different model:**
+You can choose any chat model available on OpenRouter by adding this line to your `.env` file (this setting is *not* stored globally):
+```
+# OPENROUTER_MODEL=anthropic/claude-3-haiku
+```
+If not specified, it defaults to `google/gemini-flash-1.5`.
 
 ## ▶️ Usage
 
