@@ -1,8 +1,61 @@
-# Plan
+# Commiat 🤖✍️
 
-I need a NodeJS CLI that proposes me to commit all pending changes on my git repo and auto-generates the commit message.
+Tired of writing git commit messages? Let AI do it for you! ✨
 
-- It uses OpenRouter with Gemini 2.5
-- I should be able to confirm/refuse before commit creation
-- I should be able to adjust (follow-up) before final confirmation
-- I should be able to run CLI with "commiat" (no arguments)
+`commiat` is a simple CLI tool that:
+1.  Analyzes your staged git changes (`git diff --staged`).
+2.  Generates a conventional commit message using the OpenRouter API (defaults to Google Gemini Flash 1.5 ⚡).
+3.  Prompts you to confirm ✅, adjust 📝, or cancel ❌ the commit.
+
+## 🚀 Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/commiat.git # Replace with actual URL if hosted
+    cd commiat
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+3.  **Link the CLI:**
+    This makes the `commiat` command available globally.
+    ```bash
+    npm link
+    ```
+
+## ⚙️ Configuration
+
+1.  **Get an OpenRouter API Key:**
+    Sign up at [OpenRouter.ai](https://openrouter.ai/) and get your API key.
+2.  **Create a `.env` file:**
+    Copy the example file:
+    ```bash
+    cp .env.example .env # Or create .env manually
+    ```
+3.  **Add your API key:**
+    Open the `.env` file and paste your key:
+    ```
+    OPENROUTER_API_KEY=YOUR_API_KEY_HERE
+    ```
+4.  **(Optional) Specify a different model:**
+    You can choose any chat model available on OpenRouter by adding/uncommenting this line in `.env`:
+    ```
+    # OPENROUTER_MODEL=anthropic/claude-3-haiku
+    ```
+    If not specified, it defaults to `google/gemini-flash-1.5`.
+
+## ▶️ Usage
+
+1.  **Stage your changes:**
+    ```bash
+    git add <your-files...>
+    ```
+2.  **Run commiat:**
+    ```bash
+    commiat
+    ```
+3.  **Follow the prompts:**
+    Confirm, adjust, or cancel the suggested commit message.
+
+Happy committing! 🎉
