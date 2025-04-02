@@ -47,7 +47,9 @@ async function generateCommitMessage(diff) {
     );
 
     if (response.data && response.data.choices && response.data.choices.length > 0) {
-      return response.data.choices[0].message.content.trim();
+      let message = response.data.choices[0].message.content.trim();
+      message = message.replace(/^```(?:diff|git|bash|sh)?\s*/, '').replace(/```\s*$/, '');
+      return message.trim();
     } else {
       throw new Error('Failed to generate commit message from API response.');
     }
