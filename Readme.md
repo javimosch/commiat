@@ -32,18 +32,18 @@ Tired of writing git commit messages? Let AI do it for you! ✨
 1.  **Local `.env` File:** Settings in a `.env` file in your current project directory take the highest precedence.
     ```dotenv
     # .env in your project
-    OPENROUTER_API_KEY=YOUR_PROJECT_SPECIFIC_KEY
-    OPENROUTER_MODEL=anthropic/claude-3-sonnet
+    COMMIAT_OPENROUTER_API_KEY=YOUR_PROJECT_SPECIFIC_KEY
+    COMMIAT_OPENROUTER_MODEL=anthropic/claude-3-sonnet
     ```
 2.  **Global Config File (`~/.commiat/config`):** If not found locally, settings are read from this file. It uses the standard `.env` format (KEY=VALUE).
     ```dotenv
     # ~/.commiat/config
-    OPENROUTER_API_KEY=YOUR_GLOBAL_API_KEY
-    OPENROUTER_MODEL=google/gemini-pro-1.5
+    COMMIAT_OPENROUTER_API_KEY=YOUR_GLOBAL_API_KEY
+    COMMIAT_OPENROUTER_MODEL=google/gemini-pro-1.5
     ```
 3.  **Prompt/Defaults:**
-    *   If `OPENROUTER_API_KEY` is not found anywhere, `commiat` will prompt you to enter it securely. The entered key will then be saved to the *global* config file (`~/.commiat/config`).
-    *   If `OPENROUTER_MODEL` is not found anywhere, it defaults to `google/gemini-flash-1.5`.
+    *   If `COMMIAT_OPENROUTER_API_KEY` is not found anywhere, `commiat` will prompt you to enter it securely. The entered key will then be saved to the *global* config file (`~/.commiat/config`).
+    *   If `COMMIAT_OPENROUTER_MODEL` is not found anywhere, it defaults to `google/gemini-flash-1.5`.
 
 **Managing Configuration:**
 

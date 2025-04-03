@@ -92,14 +92,15 @@ async function promptForApiKey() {
 
 async function getApiKey() {
   // 1. Check environment variable (from local .env or shell)
-  const envApiKey = process.env.OPENROUTER_API_KEY;
+  // Prefix local env var check with COMMIAT_
+  const envApiKey = process.env.COMMIAT_OPENROUTER_API_KEY;
   if (envApiKey && envApiKey !== 'YOUR_API_KEY_HERE') {
     return envApiKey;
   }
 
-  // 2. Check global config file
+  // 2. Check global config file (remains unprefixed)
   const globalConfig = loadGlobalConfig();
-  const configApiKey = globalConfig.OPENROUTER_API_KEY;
+  const configApiKey = globalConfig.COMMIAT_OPENROUTER_API_KEY;
   if (configApiKey) {
     return configApiKey;
   }
@@ -147,9 +148,10 @@ async function generateCommitMessage(diff) {
     throw new Error('Could not obtain OpenRouter API key.');
   }
 
-  // Determine model precedence: local .env > global config > default
+  // Determine model precedence: local .env (prefixed) > global config > default
   const globalConfig = loadGlobalConfig();
-  const model = process.env.OPENROUTER_MODEL || globalConfig.OPENROUTER_MODEL || DEFAULT_MODEL;
+  // Prefix local env var check with COMMIAT_
+  const model = process.env.COMMIAT_OPENROUTER_MODEL || globalConfig.COMMIAT_OPENROUTER_MODEL || DEFAULT_MODEL;
   console.log(`Using model: ${model}`); // Log the model being used
 
   const prompt = `Generate a concise Git commit message based on the following diff. Follow conventional commit format (e.g., feat: ..., fix: ..., chore: ...). Describe the change, not just the files changed.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\``;
@@ -188,6 +190,21 @@ async function generateCommitMessage(diff) {
     } else if (error.request) {
       throw new Error('No response received from OpenRouter API.');
     } else {
+      //console.error('Error setting up OpenRouter API request:', error.message);
+      
+      
+      try{
+        fs.writeFileSync(path.join((process.platform === 'win32' ? process.env.USERPROFILE : '~'), '.commiat', 'error.log'), error.message);
+      }catch(e){
+        console.error('Failed to write error to ~/.commiat/error.log:', {
+          error: e.message,
+          errorStack: e.stack,
+          originalError: error.message,
+          originalErrorStack: error.stack,
+          timestamp: new Date().toISOString()
+        });
+      }
+
       throw new Error(`Error setting up OpenRouter API request: ${error.message}`);
     }
   }
@@ -265,8 +282,10 @@ async function testLlmCompletion() {
     process.exit(1);
   }
 
+  // Determine model precedence: local .env (prefixed) > global config > default
   const globalConfig = loadGlobalConfig();
-  const model = process.env.OPENROUTER_MODEL || globalConfig.OPENROUTER_MODEL || DEFAULT_MODEL;
+  // Prefix local env var check with COMMIAT_
+  const model = process.env.COMMIAT_OPENROUTER_MODEL || globalConfig.COMMIAT_OPENROUTER_MODEL || DEFAULT_MODEL;
   const testPrompt = "Say HI";
 
   console.log(`\nInput:`);
