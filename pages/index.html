@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commiat - AI-Powered Git Commits for Developers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-text {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .terminal {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 8px;
+        }
+        .terminal-header {
+            background-color: #333;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .terminal-content {
+            padding: 1rem;
+            line-height: 1.6;
+        }
+        .terminal-content span.comment {
+            color: #6a9955;
+        }
+        .terminal-content span.prompt {
+            color: #9cdcfe;
+        }
+        .terminal-content span.command {
+            color: #dcdcaa;
+        }
+        .terminal-content span.flag {
+            color: #4ec9b0;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-800">
+    <!-- Navigation -->
+    <nav class="py-4 px-6 md:px-12 lg:px-24 bg-white border-b border-gray-100 sticky top-0 z-50">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-code-branch text-blue-500 text-xl"></i>
+                <span class="font-bold text-xl gradient-text">commiat</span>
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#features" class="hover:text-blue-500 transition">Features</a>
+                <a href="#how-it-works" class="hover:text-blue-500 transition">How it works</a>
+                <a href="#setup" class="hover:text-blue-500 transition">Setup</a>
+            </div>
+            <div>
+                <a href="https://github.com/your-username/commiat" target="_blank" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-md font-medium transition flex items-center">
+                    <i class="fab fa-github mr-2"></i> Get Started
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-gradient py-16 md:py-24 px-6 md:px-12 lg:px-24">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div>
+                <span class="inline-block bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-medium mb-4">Open Source CLI Tool</span>
+                <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">Let AI write your<br><span class="gradient-text">git commit messages</span></h1>
+                <p class="text-lg text-gray-600 mb-8">Commiat uses the OpenRouter API with Google Gemini Flash 1.5 to generate perfect commit messages based on your staged changes.</p>
+                <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                    <a href="https://github.com/your-username/commiat" target="_blank" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-md font-medium text-center transition shadow-lg">
+                        <i class="fab fa-github mr-2"></i> Clone on GitHub
+                    </a>
+                    <a href="#how-it-works" class="border border-gray-300 hover:border-gray-400 text-gray-700 px-6 py-3 rounded-md font-medium text-center transition">See how it works</a>
+                </div>
+                <div class="mt-8 flex items-center text-sm text-gray-500">
+                    <i class="fas fa-bolt text-yellow-500 mr-2"></i>
+                    <span>Powered by OpenRouter and Gemini 1.5 Flash</span>
+                </div>
+            </div>
+            <div class="terminal shadow-2xl">
+                <div class="terminal-header px-4 py-2">
+                    <div class="flex">
+                        <div class="terminal-dot bg-red-500"></div>
+                        <div class="terminal-dot bg-yellow-500"></div>
+                        <div class="terminal-dot bg-green-500"></div>
+                    </div>
+                </div>
+                <div class="terminal-content">
+                    <p><span class="prompt">$</span> <span class="command">commiat <span class="flag">-a</span></span> <span class="comment"># stage all changes</span></p>
+                    <p class="mt-2">✨ Analyzing staged changes with Gemini...</p>
+                    <p class="my-4">Generated commit message:</p>
+                    <p class="bg-gray-700 p-2 rounded mb-4">✨ Add user profile page with avatar upload</p>
+                    <p><span class="comment"># Press enter to confirm, edit to adjust, or Ctrl+C to cancel</span></p>
+                    <p class="mt-4"><span class="prompt">$</span> <span class="command">git log -1</span></p>
+                    <p class="mt-2">commit 1a2b3c4d...</p>
+                    <p>Author: Your Name</p>
+                    <p>Date:   Thu Jun 1 14:00:00 2023 +0000</p>
+                    <p class="mt-1">✨ Add user profile page with avatar upload</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-gray-50">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">Key Features</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Commiat makes your git workflow smarter and more productive</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-magic text-blue-500 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">AI-Powered Messages</h3>
+                    <p class="text-gray-600">Uses OpenRouter API with Google Gemini Flash to analyze your diffs and generate clear, descriptive commit messages.</p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-terminal text-purple-500 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Flexible Staging</h3>
+                    <p class="text-gray-600">Optionally stage all changes with the <code class="bg-gray-100 px-1 rounded">-a</code> flag or stage manually before running.</p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-cogs text-green-500 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Configurable</h3>
+                    <p class="text-gray-600">Support for both global and project-specific configuration via <code class="bg-gray-100 px-1 rounded">.env</code> files or the global config.</p>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-edit text-red-500 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Interactive</h3>
+                    <p class="text-gray-600">Review, edit, or cancel the suggested commit before it's finalized to maintain full control.</p>
+                </div>
+                
+                <!-- Feature 5 -->
+                <div class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-sliders-h text-yellow-500 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Model Selection</h3>
+                    <p class="text-gray-600">Choose your preferred AI model with the <code class="bg-gray-100 px-1 rounded">OPENROUTER_MODEL</code> setting (defaults to Gemini Flash).</p>
+                </div>
+                
+                <!-- Feature 6 -->
+                <div class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-lock text-indigo-500 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">First-Run Setup</h3>
+                    <p class="text-gray-600">Guided configuration when first run, securely saving your OpenRouter API key to the global config.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">How Commiat Works</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">A simple CLI workflow that fits right into your existing git habits</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                <div class="flex flex-col items-center text-center p-6">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-500">
+                        <i class="fas fa-terminal text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">1. Run Commiat</h3>
+                    <p class="text-gray-600">Run <code class="bg-gray-100 px-1 rounded">commiat</code> after staging changes, or use <code class="bg-gray-100 px-1 rounded">commiat -a</code> to stage all changes automatically.</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-6">
+                    <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4 text-purple-500">
+                        <i class="fas fa-brain text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">2. AI Analysis</h3>
+                    <p class="text-gray-600">Commiat analyzes your staged changes using OpenRouter with Gemini Flash (or your configured model).</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-6">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-500">
+                        <i class="fas fa-check-circle text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">3. Review & Commit</h3>
+                    <p class="text-gray-600">Confirm, edit, or cancel the suggested commit message before it's finalized.</p>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-8 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">Example Workflow</h3>
+                <div class="terminal">
+                    <div class="terminal-header px-4 py-2">
+                        <div class="flex">
+                            <div class="terminal-dot bg-red-500"></div>
+                            <div class="terminal-dot bg-yellow-500"></div>
+                            <div class="terminal-dot bg-green-500"></div>
+                        </div>
+                    </div>
+                    <div class="terminal-content">
+                        <p><span class="comment"># Install and set up Commiat</span></p>
+                        <p><span class="prompt">$</span> <span class="command">git clone https://github.com/your-username/commiat.git</span></p>
+                        <p><span class="prompt">$</span> <span class="command">cd commiat</span></p>
+                        <p><span class="prompt">$</span> <span class="command">npm install</span></p>
+                        <p><span class="prompt">$</span> <span class="command">npm link</span></p>
+                        <p class="my-4"><span class="comment"># First run - will prompt for OpenRouter API key</span></p>
+                        <p><span class="prompt">$</span> <span class="command">commiat <span class="flag">-a</span></span></p>
+                        <p class="my-2">🔑 Enter your OpenRouter API key: <span class="comment">[hidden input]</span></p>
+                        <p class="my-4"><span class="comment"># Subsequent usage</span></p>
+                        <p><span class="prompt">$</span> <span class="command">commiat <span class="flag">-a</span></span></p>
+                        <p>✨ Analyzing staged changes with Gemini...</p>
+                        <p class="my-2">Generated commit message:</p>
+                        <p class="bg-gray-700 p-2 rounded my-2">✨ Update README with complete installation instructions</p>
+                        <p><span class="comment"># Press enter to confirm, edit to adjust, or Ctrl+C to cancel</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Setup Section -->
+    <section id="setup" class="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-gray-50">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">Installation & Configuration</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Get started with Commiat in a few simple steps</p>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md">
+                <div class="p-6 border-b border-gray-200 bg-gray-50">
+                    <h3 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-download text-blue-500 mr-2"></i>
+                        Installation
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="terminal">
+                        <div class="terminal-header px-4 py-2">
+                            <div class="flex">
+                                <div class="terminal-dot bg-red-500"></div>
+                                <div class="terminal-dot bg-yellow-500"></div>
+                                <div class="terminal-dot bg-green-500"></div>
+                            </div>
+                        </div>
+                        <div class="terminal-content">
+                            <p><span class="comment"># Clone the repository</span></p>
+                            <p><span class="prompt">$</span> <span class="command">git clone https://github.com/your-username/commiat.git</span></p>
+                            <p><span class="prompt">$</span> <span class="command">cd commiat</span></p>
+                            <p class="my-2"><span class="comment"># Install dependencies</span></p>
+                            <p><span class="prompt">$</span> <span class="command">npm install</span></p>
+                            <p class="my-2"><span class="comment"># Link for global access</span></p>
+                            <p><span class="prompt">$</span> <span class="command">npm link</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-6 border-t border-gray-200 bg-gray-50">
+                    <h3 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-key text-purple-500 mr-2"></i>
+                        Configuration
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <p class="mb-4 text-gray-600">Commiat looks for configuration in this order of precedence:</p>
+                    <ol class="list-decimal pl-5 space-y-4 text-gray-700">
+                        <li>
+                            <span class="font-medium">Project <code class="bg-gray-100 px-1 rounded">.env</code> file:</span>
+                            <p class="mt-1 bg-gray-50 p-2 rounded text-sm font-mono">OPENROUTER_API_KEY=your_key_here<br>OPENROUTER_MODEL=google/gemini-flash-1.5</p>
+                        </li>
+                        <li>
+                            <span class="font-medium">Global config (<code class="bg-gray-100 px-1 rounded">~/.commiat/config</code>):</span>
+                            <p class="mt-1 text-sm text-gray-600">Edit with <code class="bg-gray-100 px-1 rounded">commiat config</code></p>
+                        </li>
+                        <li>
+                            <span class="font-medium">Interactive prompt:</span>
+                            <p class="mt-1 text-sm text-gray-600">First-run setup will securely save your API key</p>
+                        </li>
+                    </ol>
+                    
+                    <div class="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <h4 class="font-medium flex items-center">
+                            <i class="fas fa-exclamation-circle text-yellow-500 mr-2"></i>
+                            Note on API Keys
+                        </h4>
+                        <p class="mt-2 text-sm text-yellow-700">You'll need an OpenRouter API key. Commiat uses <code class="bg-yellow-100 px-1 rounded">google/gemini-flash-1.5</code> by default, but you can configure any supported model.</p>
+                    </div>
+                </div>
+                
+                <div class="p-6 border-t border-gray-200 bg-gray-50">
+                    <h3 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-running text-green-500 mr-2"></i>
+                        Usage
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <p class="mb-4 text-gray-600">Basic commands to get started:</p>
+                    <div class="terminal">
+                        <div class="terminal-header px-4 py-2">
+                            <div class="flex">
+                                <div class="terminal-dot bg-red-500"></div>
+                                <div class="terminal-dot bg-yellow-500"></div>
+                                <div class="terminal-dot bg-green-500"></div>
+                            </div>
+                        </div>
+                        <div class="terminal-content">
+                            <p><span class="comment"># Option 1: Stage changes manually</span></p>
+                            <p><span class="prompt">$</span> <span class="command">git add file1.js file2.css</span></p>
+                            <p><span class="prompt">$</span> <span class="command">commiat</span></p>
+                            <p class="my-4"><span class="comment"># Option 2: Stage all changes automatically</span></p>
+                            <p><span class="prompt">$</span> <span class="command">commiat <span class="flag">-a</span></span></p>
+                            <p class="my-4"><span class="comment"># Edit global configuration</span></p>
+                            <p><span class="prompt">$</span> <span class="command">commiat config</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-3xl font-bold mb-6">Ready to revolutionize your commit workflow?</h2>
+            <p class="text-xl mb-8">Open source, easy to install, and powered by cutting-edge AI.</p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="https://github.com/your-username/commiat" target="_blank" class="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 rounded-md font-bold text-lg transition shadow-lg">
+                    <i class="fab fa-github mr-2"></i> Get Commiat on GitHub
+                </a>
+                <a href="#setup" class="border-2 border-white hover:bg-white hover:bg-opacity-10 px-8 py-4 rounded-md font-medium text-lg transition">
+                    View Installation Guide
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-6 md:px-12 lg:px-24 bg-gray-900 text-white">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div>
+                <div class="flex items-center space-x-2 mb-4">
+                    <i class="fas fa-code-branch text-blue-400 text-xl"></i>
+                    <span class="font-bold text-xl">commiat</span>
+                </div>
+                <p class="text-gray-400">AI-powered git commits that enhance your developer workflow.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-lg mb-4">Resources</h4>
+                <ul class="space-y-2 text-gray-400">
+                    <li><a href="#features" class="hover:text-white transition">Features</a></li>
+                    <li><a href="#how-it-works" class="hover:text-white transition">How it works</a></li>
+                    <li><a href="#setup" class="hover:text-white transition">Setup Guide</a></li>
+                    <li><a href="https://openrouter.ai/" target="_blank" class="hover:text-white transition">OpenRouter</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold text-lg mb-4">Development</h4>
+                <ul class="space-y-2 text-gray-400">
+                    <li><a href="https://github.com/your-username/commiat/issues" target="_blank" class="hover:text-white transition">Issues</a></li>
+                    <li><a href="https://github.com/your-username/commiat/pulls" target="_blank" class="hover:text-white transition">Pull Requests</a></li>
+                    <li><a href="https://github.com/your-username/commiat" target="_blank" class="hover:text-white transition">Source Code</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold text-lg mb-4">Connect</h4>
+                <div class="flex space-x-4 mb-6">
+                    <a href="https://github.com/your-username/commiat" target="_blank" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600 transition"><i class="fab fa-github"></i></a>
+                </div>
+                <p class="text-gray-400">Need help? <a href="https://github.com/your-username/commiat/issues" target="_blank" class="text-blue-400 hover:underline">Open an issue</a></p>
+            </div>
+        </div>
+        <div class="border-t border-gray-800 mt-12 pt-8 text-center text-gray-500">
+            <p>© 2023 Commiat. Open source under MIT License.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
