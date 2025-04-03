@@ -194,9 +194,11 @@ async function generateCommitMessage(diff) {
       
       
       try{
-        fs.writeFileSync(path.join((process.platform === 'win32' ? process.env.USERPROFILE : '~'), '.commiat', 'error.log'), error.message);
+        const errorLogPath = path.join(CONFIG_DIR, 'error.log');
+        ensureConfigDirExists();
+        fs.writeFileSync(errorLogPath, `[${new Date().toISOString()}] ${error.message}\n${error.stack}\n\n`, { flag: 'a' });
       }catch(e){
-        console.error('Failed to write error to ~/.commiat/error.log:', {
+        console.error(`Failed to write error to ${path.join(CONFIG_DIR, 'error.log')}:`, {
           error: e.message,
           errorStack: e.stack,
           originalError: error.message,
