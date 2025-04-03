@@ -142,6 +142,12 @@ async function getStagedDiff() {
   return diff;
 }
 
+async function fsLogError(error) {
+  const errorLogPath = path.join(CONFIG_DIR, 'error.log');
+        ensureConfigDirExists();
+        fs.writeFileSync(errorLogPath, `[${new Date().toISOString()}] ${error.message}\n${error.stack}\n\n`, { flag: 'a' });
+}
+
 async function generateCommitMessage(diff) {
   const apiKey = await getApiKey();
   if (!apiKey) {
@@ -174,6 +180,12 @@ async function generateCommitMessage(diff) {
       message = message.replace(/^```(?:diff|git|bash|sh)?\s*/, '').replace(/```\s*$/, '');
       return message.trim();
     } else {
+      fsLogError({
+        message: 'Failed to generate commit message from API response.',
+        stack:{
+          response: response.data
+        }
+      })
       throw new Error('Failed to generate commit message from API response.');
     }
   } catch (error) {
@@ -190,23 +202,6 @@ async function generateCommitMessage(diff) {
     } else if (error.request) {
       throw new Error('No response received from OpenRouter API.');
     } else {
-      //console.error('Error setting up OpenRouter API request:', error.message);
-      
-      
-      try{
-        const errorLogPath = path.join(CONFIG_DIR, 'error.log');
-        ensureConfigDirExists();
-        fs.writeFileSync(errorLogPath, `[${new Date().toISOString()}] ${error.message}\n${error.stack}\n\n`, { flag: 'a' });
-      }catch(e){
-        console.error(`Failed to write error to ${path.join(CONFIG_DIR, 'error.log')}:`, {
-          error: e.message,
-          errorStack: e.stack,
-          originalError: error.message,
-          originalErrorStack: error.stack,
-          timestamp: new Date().toISOString()
-        });
-      }
-
       throw new Error(`Error setting up OpenRouter API request: ${error.message}`);
     }
   }
