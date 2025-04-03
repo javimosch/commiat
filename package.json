@@ -1,7 +1,7 @@
 {
   "name": "commiat",
   "version": "1.0.0",
-  "description": "I need a NodeJS CLI that proposes me to commit all pending changes on my git repo and auto-generates the commit message.",
+  "description": "Tired of writing git commit messages? Let AI do it for you! ✨",
   "main": "index.js",
   "bin": {
     "commiat": "src/cli.js"
@@ -10,8 +10,17 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Javier Leadro Arancibia", 
+  "email": "arancibiajav@gmail.com",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/javimosch/commiat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/javimosch/commiat/issues"
+  },
+  "homepage": "https://github.com/javimosch/commiat",
   "dependencies": {
     "axios": "^1.8.4",
     "commander": "^13.1.0",
