@@ -10,9 +10,15 @@ Tired of writing git commit messages? Let AI do it for you! ✨
 
 ## 🚀 Installation
 
+### Option 1: Install from npm (Recommended)
+```bash
+npm install -g commiat
+```
+
+### Option 2: Manual Installation
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/commiat.git # Replace with actual URL if hosted
+    git clone https://github.com/javimosch/commiat.git
     cd commiat
     ```
 2.  **Install dependencies:**
