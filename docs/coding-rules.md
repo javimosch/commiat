@@ -1,0 +1,1 @@
+Organize frontend and backend code into modular, single-responsibility files (e.g., utils, services, routes, models, composables), keeping each under 300 lines for maintainability.
