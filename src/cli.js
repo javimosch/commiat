@@ -126,19 +126,26 @@ function openConfigInEditor() {
   }
 }
 
-async function getStagedDiff() {
-  const diff = await git.diff(['--staged']);
-  if (!diff) {
-    console.log('No staged changes found. Stage files with `git add` first.');
-    process.exit(0);
-  }
-  return diff;
+/**
+ * Checks for staged files and exits if none are found.
+ * Used after potential staging steps.
+ */
+async function ensureStagedFiles() {
+    const diffSummary = await git.diffSummary(['--staged']);
+    if (diffSummary.files.length === 0) {
+        console.log('No staged changes found to commit.');
+        process.exit(0);
+    }
+    // Return the detailed diff for message generation
+    return await git.diff(['--staged']);
 }
 
 async function fsLogError(error) {
   const errorLogPath = path.join(GLOBAL_CONFIG_DIR, 'error.log');
   ensureGlobalConfigDirExists();
-  fs.writeFileSync(errorLogPath, `[${new Date().toISOString()}] ${error.message}\n${error.stack}\n\n`, { flag: 'a' });
+  // Ensure error.stack is included if available
+  const stack = error.stack ? `\n${error.stack}` : '';
+  fs.writeFileSync(errorLogPath, `[${new Date().toISOString()}] ${error.message}${stack}\n\n`, { flag: 'a' });
 }
 
 async function generateCommitMessage(diff, localConfig, systemVarValues) {
@@ -159,7 +166,10 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
   if (localConfig && Object.keys(localConfig.variables).length > 0) {
     prompt += "Variable descriptions (use these to fill the format placeholders):\n";
     for (const variable in localConfig.variables) {
-      prompt += `- {${variable}}: ${localConfig.variables[variable]}\n`;
+      // Only include descriptions for variables actually present in the format
+      if (format.includes(`{${variable}}`)) {
+          prompt += `- {${variable}}: ${localConfig.variables[variable]}\n`;
+      }
     }
   }
 
@@ -187,8 +197,8 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
       { headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost',
-          'X-Title': 'Commiat CLI',
+          'HTTP-Referer': 'http://localhost', // Required by some models
+          'X-Title': 'Commiat CLI', // Optional
         }
       }
     );
@@ -199,16 +209,21 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
       message = message.replace(/^["']|["']$/g, '');
       return message.trim();
     } else {
-      fsLogError({
+      const errorData = {
         message: 'Failed to generate commit message from API response.',
-        stack: {
-          response: response.data
-        }
-      });
-      throw new Error('Failed to generate commit message from API response.');
+        stack: { response: response.data } // Use stack for context object
+      };
+      await fsLogError(errorData);
+      throw new Error(errorData.message);
     }
   } catch (error) {
-    await fsLogError(error);
+    // Ensure the error object passed to fsLogError has a message
+    const logError = new Error(error.message || 'Unknown API error');
+    logError.stack = error.stack; // Preserve original stack if available
+    logError.responseStatus = error.response?.status;
+    logError.responseData = error.response?.data;
+    await fsLogError(logError);
+
     if (error.response) {
       console.error('API Error Status:', error.response.status);
       console.error('API Error Data:', error.response.data);
@@ -253,7 +268,7 @@ async function promptUser(initialMessage) {
         },
       ]);
       currentMessage = adjustedMessage.trim();
-    } else {
+    } else { // cancel
       return null;
     }
   }
@@ -262,32 +277,72 @@ async function promptUser(initialMessage) {
 async function mainAction(options) {
   console.log('Commiat CLI - Generating commit message...');
   try {
+    // 1. Load Local Config
     let localConfig = await localConfigManager.loadConfig();
     const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
     if (!localConfig) {
       console.log(`Using default format: "${format}"`);
     }
 
-    const variablesInFormat = variableProcessor.detectVariables(format);
-    if (localConfig && variablesInFormat.length > 0) {
-      await variableProcessor.promptForMissingVariableDescriptions(variablesInFormat, localConfig);
-      localConfig = await localConfigManager.loadConfig();
-    }
-
-    const systemVarValues = await variableProcessor.getSystemVariableValues();
-
+    // 2. Handle Staging
     if (options.addAll) {
       console.log('Staging all changes (`git add .`)...');
       await git.add('.');
       console.log('Changes staged.');
+    } else {
+      // Check if files are already staged if -a wasn't used
+      const stagedSummary = await git.diffSummary(['--staged']);
+      if (stagedSummary.files.length === 0) {
+        // No files staged and -a not used, prompt the user
+        const { shouldStageAll } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'shouldStageAll',
+            message: 'No changes staged. Stage all changes now? (git add .)',
+            default: true,
+          }
+        ]);
+        if (shouldStageAll) {
+          console.log('Staging all changes (`git add .`)...');
+          await git.add('.');
+          console.log('Changes staged.');
+        } else {
+          console.log('No changes staged. Aborting.');
+          process.exit(0);
+        }
+      } else {
+          console.log(`${stagedSummary.files.length} file(s) already staged.`);
+      }
     }
 
-    const diff = await getStagedDiff();
+    // 3. Ensure Staged Files Exist and Get Diff
+    // This now happens *after* potential staging steps
+    const diff = await ensureStagedFiles(); // Exits if still no staged files
 
+    // 4. Detect Variables and Prompt for Descriptions (if needed)
+    const variablesInFormat = variableProcessor.detectVariables(format);
+    if (localConfig && variablesInFormat.length > 0) {
+      const configWasUpdated = await variableProcessor.promptForMissingVariableDescriptions(variablesInFormat, localConfig);
+      // Reload config only if descriptions were added and saved
+      if (configWasUpdated) {
+          localConfig = await localConfigManager.loadConfig();
+          if (!localConfig) {
+              // Handle rare case where config becomes invalid after saving descriptions
+              throw new Error(`Failed to reload ${localConfigManager.LOCAL_CONFIG_FILENAME} after updating variable descriptions.`);
+          }
+      }
+    }
+
+    // 5. Get System Variable Values
+    const systemVarValues = await variableProcessor.getSystemVariableValues();
+
+    // 6. Generate Initial Commit Message
     const initialCommitMessage = await generateCommitMessage(diff, localConfig, systemVarValues);
 
+    // 7. Prompt User for Confirmation/Adjustment
     const finalCommitMessage = await promptUser(initialCommitMessage);
 
+    // 8. Commit or Cancel
     if (finalCommitMessage) {
       await git.commit(finalCommitMessage);
       console.log('\n✅ Commit successful!');
@@ -296,6 +351,8 @@ async function mainAction(options) {
     }
   } catch (error) {
     console.error('\n❌ Error:', error.message);
+    // Log the error before exiting
+    await fsLogError(error);
     process.exit(1);
   }
 }
@@ -340,7 +397,13 @@ async function testLlmCompletion() {
       process.exit(1);
     }
   } catch (error) {
-    await fsLogError(error);
+    // Ensure the error object passed to fsLogError has a message
+    const logError = new Error(error.message || 'Unknown API error during test');
+    logError.stack = error.stack; // Preserve original stack if available
+    logError.responseStatus = error.response?.status;
+    logError.responseData = error.response?.data;
+    await fsLogError(logError);
+
     console.error('\n❌ Test failed: API request error.');
     if (error.response) {
       console.error('- Status:', error.response.status);
