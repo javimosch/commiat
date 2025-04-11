@@ -316,18 +316,15 @@ async function mainAction(options) {
     }
 
     // 3. Ensure Staged Files Exist and Get Diff
-    // This now happens *after* potential staging steps
     const diff = await ensureStagedFiles(); // Exits if still no staged files
 
     // 4. Detect Variables and Prompt for Descriptions (if needed)
     const variablesInFormat = variableProcessor.detectVariables(format);
     if (localConfig && variablesInFormat.length > 0) {
       const configWasUpdated = await variableProcessor.promptForMissingVariableDescriptions(variablesInFormat, localConfig);
-      // Reload config only if descriptions were added and saved
       if (configWasUpdated) {
           localConfig = await localConfigManager.loadConfig();
           if (!localConfig) {
-              // Handle rare case where config becomes invalid after saving descriptions
               throw new Error(`Failed to reload ${localConfigManager.LOCAL_CONFIG_FILENAME} after updating variable descriptions.`);
           }
       }
@@ -344,14 +341,25 @@ async function mainAction(options) {
 
     // 8. Commit or Cancel
     if (finalCommitMessage) {
-      await git.commit(finalCommitMessage);
+      // Prepare commit options
+      const commitOptions = {};
+      // Check if the --no-verify flag was passed (commander sets options.verify to false)
+      if (options.verify === false) {
+        commitOptions['--no-verify'] = null; // Add the flag if requested
+        console.log('Committing with --no-verify flag...');
+      } else {
+        console.log('Committing...');
+      }
+
+      // Removed DEBUG log for commit options
+
+      await git.commit(finalCommitMessage, undefined, commitOptions); // Pass options here
       console.log('\n✅ Commit successful!');
     } else {
       console.log('\n❌ Commit cancelled.');
     }
   } catch (error) {
     console.error('\n❌ Error:', error.message);
-    // Log the error before exiting
     await fsLogError(error);
     process.exit(1);
   }
@@ -426,6 +434,7 @@ program
 
 program
   .option('-a, --add-all', 'Stage all changes (`git add .`) before committing')
+  .option('-n, --no-verify', 'Bypass git commit hooks') // Commander handles --no- prefix, creates options.verify = false
   .action(mainAction);
 
 program
