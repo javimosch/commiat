@@ -3,11 +3,12 @@
 Tired of writing git commit messages? Let AI do it for you! ✨
 
 `commiat` is a simple CLI tool that:
-1.  Optionally stages all changes (`git add .`) if you use the `-a` flag.
+1.  Optionally stages all changes (`git add .`) if you use the `-a` or `--add-all` flag.
 2.  Analyzes your staged git changes (`git diff --staged`).
-3.  Generates a commit message using the OpenRouter API (defaults to Google Gemini Flash 1.5 ⚡).
+3.  Generates a commit message using an AI model via **OpenRouter** (defaults to Google Gemini Flash 1.5 ⚡) or a local **Ollama** instance (defaults to qwen2.5).
 4.  **Supports custom commit message formats** defined in a local `.commiat` file.
 5.  Prompts you to confirm ✅, adjust 📝, or cancel ❌ the commit.
+6.  Optionally bypasses git commit hooks using the `-n` or `--no-verify` flag.
 
 ## 🚀 Installation
 
@@ -38,13 +39,19 @@ npm install -g commiat
 
 ### 1. Global Configuration (`~/.commiat/config`)
 
-This file stores settings that apply across all your projects, primarily your API key and default model. It uses the standard `.env` format (KEY=VALUE).
+This file stores settings that apply across all your projects, primarily your LLM provider choice, API keys, and default models. It uses the standard `.env` format (KEY=VALUE).
 
 *   **Location:** `~/.commiat/config` (created automatically if needed)
-*   **Managed via:** `commiat config` command
+*   **Managed via:** `commiat config` (for OpenRouter) and `commiat ollama` (for Ollama) commands.
 *   **Key Settings:**
-    *   `COMMIAT_OPENROUTER_API_KEY`: Your OpenRouter API key (required). If not found here or in environment variables, you'll be prompted.
-    *   `COMMIAT_OPENROUTER_MODEL`: The default OpenRouter model ID (e.g., `google/gemini-flash-1.5`, `anthropic/claude-3-haiku`). Defaults to `google/gemini-flash-1.5`.
+    *   **OpenRouter:**
+        *   `COMMIAT_OPENROUTER_API_KEY`: Your OpenRouter API key (required if using OpenRouter). If not found here or in environment variables, you'll be prompted.
+        *   `COMMIAT_OPENROUTER_MODEL`: The default OpenRouter model ID (e.g., `google/gemini-flash-1.5`, `anthropic/claude-3-haiku`). Defaults to `google/gemini-flash-1.5`.
+    *   **Ollama:** (Managed via `commiat ollama`)
+        *   `COMMIAT_USE_OLLAMA`: Set to `true` to use Ollama instead of OpenRouter. Defaults to `false`.
+        *   `COMMIAT_OLLAMA_BASE_URL`: The base URL for your running Ollama instance. Defaults to `http://localhost:11434`.
+        *   `COMMIAT_OLLAMA_MODEL`: The Ollama model to use. Defaults to `llama3`.
+        *   `COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER`: Set to `true` to automatically fall back to OpenRouter if the Ollama request fails (requires OpenRouter API key to be configured). Defaults to `false`.
 
 ### 2. Project-Specific Format Configuration (`.commiat`)
 
@@ -78,30 +85,45 @@ This optional file, placed in your project's root directory, allows you to defin
 
 Settings are looked for in this order:
 
-1.  **Environment Variables / Local `.env` File:** `COMMIAT_OPENROUTER_API_KEY` and `COMMIAT_OPENROUTER_MODEL` set in your shell or a project-local `.env` file override everything else.
+1.  **Environment Variables / Local `.env` File:** `COMMIAT_OPENROUTER_API_KEY`, `COMMIAT_OPENROUTER_MODEL`, `COMMIAT_USE_OLLAMA`, `COMMIAT_OLLAMA_BASE_URL`, `COMMIAT_OLLAMA_MODEL`, `COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER` set in your shell or a project-local `.env` file override everything else.
 2.  **Project `.commiat` File:** If present, the `format` and `variables` defined here are used for commit message generation.
-3.  **Global `~/.commiat/config` File:** Used for `COMMIAT_OPENROUTER_API_KEY` and `COMMIAT_OPENROUTER_MODEL` if not set by environment variables.
+3.  **Global `~/.commiat/config` File:** Used for LLM provider settings if not set by environment variables.
 4.  **Prompts / Defaults:**
-    *   If `COMMIAT_OPENROUTER_API_KEY` is not found, you'll be prompted, and it will be saved globally.
-    *   If `COMMIAT_OPENROUTER_MODEL` is not found, `google/gemini-flash-1.5` is used.
+    *   If using OpenRouter and `COMMIAT_OPENROUTER_API_KEY` is not found, you'll be prompted, and it will be saved globally.
+    *   If LLM provider settings are not found, defaults are used (OpenRouter with Gemini Flash, or Ollama with llama3 if enabled).
     *   If `.commiat` is not found, a standard conventional commit format (`{type}: {msg}`) is used. If `.commiat` is missing custom variable descriptions, you'll be prompted.
 
 ## ▶️ Usage
 
-1.  **(Optional) Create a `.commiat` file** in your project root if you want a custom format (see example above).
-2.  **Stage your changes:**
+1.  **(Optional) Configure your LLM provider:**
+    *   For **OpenRouter** (default): Run `commiat` once. It will prompt for your API key if needed and save it globally. You can edit the model later with `commiat config`.
+    *   For **Ollama**: Run `commiat ollama` to enable it, set the URL/model, and optionally enable fallback to OpenRouter.
+2.  **(Optional) Create a `.commiat` file** in your project root if you want a custom format (see example above).
+3.  **Stage your changes:**
     ```bash
     git add <your-files...>
     # OR stage all changes:
     git add .
     ```
-3.  **Run commiat:**
+4.  **Run commiat:**
     ```bash
+    # Generate commit message
     commiat
-    # OR use the -a flag to stage all changes AND run:
+
+    # Stage all changes AND generate commit message
     commiat -a
+    # or
+    commiat --add-all
+
+    # Generate commit message and bypass commit hooks
+    commiat -n
+    # or
+    commiat --no-verify
+
+    # Combine flags
+    commiat -a -n
     ```
-4.  **Follow the prompts:**
+5.  **Follow the prompts:**
     *   If it's the first time using a custom variable in `.commiat`, you'll be asked for its description.
     *   Confirm, adjust, or cancel the suggested commit message.
 
@@ -124,13 +146,18 @@ Settings are looked for in this order:
 
 ## Other Commands
 
-*   **Edit Global Configuration:**
-    Opens `~/.commiat/config` in your editor.
+*   **Edit Global Configuration (Mainly OpenRouter):**
+    Opens `~/.commiat/config` in your editor. Use this primarily for the OpenRouter API key and model if not using environment variables.
     ```bash
     commiat config
     ```
-*   **Test API Configuration:**
-    Checks connection using settings from global config / env vars.
+*   **Configure Ollama:**
+    Interactively enable/disable Ollama, set its URL and model, and configure fallback to OpenRouter.
+    ```bash
+    commiat ollama
+    ```
+*   **Test LLM Configuration:**
+    Checks connection and basic generation using your currently configured provider (OpenRouter OR Ollama w/ fallback).
     ```bash
     commiat config --test
     ```
