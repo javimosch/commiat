@@ -1,0 +1,5 @@
+# OpenAI API Key
+OPENAI_API_KEY=your-api-key-here
+
+# Custom commit message format
+COMMIAT_FORMAT="{type} (context) msg (#{gitBranch})"
