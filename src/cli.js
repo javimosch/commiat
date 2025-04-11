@@ -405,7 +405,7 @@ async function promptForLead() {
                 {
                     type: 'input',
                     name: 'email',
-                    message: 'Great! Please enter your email to receive the discount code:',
+                    message: 'Great! Please enter your email to receive the early access link when available',
                     validate: (input) => {
                         // Basic email format check
                         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
