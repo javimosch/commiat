@@ -20,7 +20,7 @@ const git = simpleGit();
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_OPENROUTER_MODEL = 'google/gemini-flash-1.5';
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
-const DEFAULT_OLLAMA_MODEL = 'llama3'; // A common default Ollama model
+const DEFAULT_OLLAMA_MODEL = 'llama3';
 const DEFAULT_CONVENTIONAL_FORMAT = '{type}: {msg}';
 const GLOBAL_CONFIG_DIR = path.join(os.homedir(), '.commiat');
 const GLOBAL_CONFIG_PATH = path.join(GLOBAL_CONFIG_DIR, 'config');
@@ -31,6 +31,7 @@ const CONFIG_KEY_OPENROUTER_MODEL = 'COMMIAT_OPENROUTER_MODEL';
 const CONFIG_KEY_USE_OLLAMA = 'COMMIAT_USE_OLLAMA';
 const CONFIG_KEY_OLLAMA_BASE_URL = 'COMMIAT_OLLAMA_BASE_URL';
 const CONFIG_KEY_OLLAMA_MODEL = 'COMMIAT_OLLAMA_MODEL';
+const CONFIG_KEY_OLLAMA_FALLBACK = 'COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER';
 
 // --- Global Config Functions ---
 function ensureGlobalConfigDirExists() {
@@ -64,14 +65,13 @@ function saveGlobalConfig(configObj) {
   for (const key in configObj) {
     if (Object.hasOwnProperty.call(configObj, key)) {
       const value = configObj[key];
-      // Handle boolean true explicitly, otherwise treat as string
       const formattedValue = typeof value === 'boolean' && value === true
         ? 'true'
         : typeof value === 'boolean' && value === false
         ? 'false'
-        : /\s|#|"|'|=/.test(value) // Check if string value needs quotes
-        ? `"${value.replace(/"/g, '\\"')}"`
-        : value;
+        : /\s|#|"|'|=/.test(String(value))
+        ? `"${String(value).replace(/"/g, '\\"')}`
+        : String(value);
       fileContent += `${key}=${formattedValue}\n`;
     }
   }
@@ -107,7 +107,17 @@ async function promptForApiKey() {
   return trimmedKey;
 }
 
-async function getApiKey() { // Only needed for OpenRouter
+function isOpenRouterConfigured() {
+    const envApiKey = process.env[CONFIG_KEY_API_KEY];
+    if (envApiKey && envApiKey !== 'YOUR_API_KEY_HERE') {
+        return true;
+    }
+    const globalConfig = loadGlobalConfig();
+    const configApiKey = globalConfig[CONFIG_KEY_API_KEY];
+    return !!configApiKey;
+}
+
+async function getApiKey(promptIfNeeded = true) {
   const envApiKey = process.env[CONFIG_KEY_API_KEY];
   if (envApiKey && envApiKey !== 'YOUR_API_KEY_HERE') {
     return envApiKey;
@@ -119,25 +129,28 @@ async function getApiKey() { // Only needed for OpenRouter
     return configApiKey;
   }
 
-  return await promptForApiKey();
+  if (promptIfNeeded) {
+      return await promptForApiKey();
+  } else {
+      return null;
+  }
 }
 
 function getLlmProviderConfig() {
     const envUseOllama = process.env[CONFIG_KEY_USE_OLLAMA];
     const globalConfig = loadGlobalConfig();
     const configUseOllama = globalConfig[CONFIG_KEY_USE_OLLAMA];
+    const configFallback = globalConfig[CONFIG_KEY_OLLAMA_FALLBACK] === 'true';
 
-    // Env var takes precedence, then global config. Default to false (use OpenRouter).
     const useOllama = envUseOllama === '1' || envUseOllama === 'true' || (!envUseOllama && configUseOllama === 'true');
 
     if (useOllama) {
         const baseUrl = process.env[CONFIG_KEY_OLLAMA_BASE_URL] || globalConfig[CONFIG_KEY_OLLAMA_BASE_URL] || DEFAULT_OLLAMA_BASE_URL;
         const model = process.env[CONFIG_KEY_OLLAMA_MODEL] || globalConfig[CONFIG_KEY_OLLAMA_MODEL] || DEFAULT_OLLAMA_MODEL;
-        return { provider: 'ollama', baseUrl, model };
+        return { provider: 'ollama', baseUrl, model, fallbackEnabled: configFallback };
     } else {
         const model = process.env[CONFIG_KEY_OPENROUTER_MODEL] || globalConfig[CONFIG_KEY_OPENROUTER_MODEL] || DEFAULT_OPENROUTER_MODEL;
-        // API key will be fetched separately if needed by generateCommitMessage/testLlmCompletion
-        return { provider: 'openrouter', model };
+        return { provider: 'openrouter', model, fallbackEnabled: false };
     }
 }
 
@@ -181,18 +194,112 @@ async function fsLogError(error) {
   const errorLogPath = path.join(GLOBAL_CONFIG_DIR, 'error.log');
   ensureGlobalConfigDirExists();
   const stack = error.stack ? `\n${error.stack}` : '';
-  fs.writeFileSync(errorLogPath, `[${new Date().toISOString()}] ${error.message}${stack}\n\n`, { flag: 'a' });
+  const providerInfo = error.provider ? `\nProvider: ${error.provider}` : '';
+  const requestUrlInfo = error.requestUrl ? `\nRequest URL: ${error.requestUrl}` : '';
+  const responseStatusInfo = error.responseStatus ? `\nResponse Status: ${error.responseStatus}` : '';
+  const responseDataInfo = error.responseData ? `\nResponse Data: ${JSON.stringify(error.responseData)}` : '';
+
+  const logMessage = `[${new Date().toISOString()}] ${error.message}${providerInfo}${requestUrlInfo}${responseStatusInfo}${responseDataInfo}${stack}\n\n`;
+  fs.writeFileSync(errorLogPath, logMessage, { flag: 'a' });
 }
 
-// --- Commit Message Generation ---
+// --- API Call Helpers ---
+
+/**
+ * Makes API call to Ollama.
+ * @param {string} prompt The full prompt content.
+ * @param {object} llmConfig The Ollama configuration object.
+ * @returns {Promise<string>} The generated commit message.
+ * @throws {Error} If the API call fails or returns invalid data.
+ */
+async function callOllamaApi(prompt, llmConfig) {
+    const ollamaUrl = `${llmConfig.baseUrl}/api/chat`;
+    console.log(`Sending request to Ollama: ${ollamaUrl}`);
+    try {
+        const response = await axios.post(
+            ollamaUrl,
+            {
+                model: llmConfig.model,
+                messages: [{ role: 'user', content: prompt }],
+                stream: false
+            },
+            { headers: { 'Content-Type': 'application/json' } }
+        );
+
+        if (response.data && response.data.message && response.data.message.content) {
+            let message = response.data.message.content.trim();
+            message = message.replace(/^```(?:git|commit|text)?\s*/, '').replace(/```\s*$/, '');
+            message = message.replace(/^["']|["']$/g, '');
+            return message.trim();
+        } else {
+            throw new Error('Invalid Ollama API response structure.');
+        }
+    } catch (error) {
+        const enhancedError = new Error(error.message || 'Ollama API request failed');
+        enhancedError.stack = error.stack;
+        enhancedError.provider = 'ollama';
+        enhancedError.requestUrl = ollamaUrl;
+        enhancedError.responseStatus = error.response?.status;
+        enhancedError.responseData = error.response?.data;
+        enhancedError.isNetworkError = !!error.request && !error.response;
+        throw enhancedError;
+    }
+}
+
+/**
+ * Makes API call to OpenRouter.
+ * @param {string} prompt The full prompt content.
+ * @param {object} llmConfig The OpenRouter configuration object.
+ * @returns {Promise<string>} The generated commit message.
+ * @throws {Error} If the API call fails, API key is missing, or returns invalid data.
+ */
+async function callOpenRouterApi(prompt, llmConfig) {
+    const apiKey = await getApiKey();
+    if (!apiKey) {
+        throw new Error('Could not obtain OpenRouter API key.');
+    }
+    console.log(`Sending request to OpenRouter: ${OPENROUTER_API_URL}`);
+    try {
+        const response = await axios.post(
+            OPENROUTER_API_URL,
+            { model: llmConfig.model, messages: [{ role: 'user', content: prompt }] },
+            { headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'http://localhost',
+                'X-Title': 'Commiat CLI',
+              }
+            }
+        );
+
+        if (response.data && response.data.choices && response.data.choices.length > 0) {
+            let message = response.data.choices[0].message.content.trim();
+            message = message.replace(/^```(?:git|commit|text)?\s*/, '').replace(/```\s*$/, '');
+            message = message.replace(/^["']|["']$/g, '');
+            return message.trim();
+        } else {
+            throw new Error('Invalid OpenRouter API response structure.');
+        }
+    } catch (error) {
+        const enhancedError = new Error(error.message || 'OpenRouter API request failed');
+        enhancedError.stack = error.stack;
+        enhancedError.provider = 'openrouter';
+        enhancedError.requestUrl = OPENROUTER_API_URL;
+        enhancedError.responseStatus = error.response?.status;
+        enhancedError.responseData = error.response?.data;
+        enhancedError.isAuthenticationError = error.response?.status === 401;
+        throw enhancedError;
+    }
+}
+
+// --- Commit Message Generation (Main Logic) ---
 async function generateCommitMessage(diff, localConfig, systemVarValues) {
     const llmConfig = getLlmProviderConfig();
-    console.log(`Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}`);
+    console.log(`Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ', Fallback Enabled' : ''}`);
 
     let prompt = `Generate a Git commit message based on the following diff.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\`\n\n`;
     const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
     prompt += `The desired commit message format is: "${format}"\n`;
-
     if (localConfig && Object.keys(localConfig.variables).length > 0) {
         prompt += "Variable descriptions (use these to fill the format placeholders):\n";
         for (const variable in localConfig.variables) {
@@ -201,99 +308,55 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
             }
         }
     }
-
     const variablesInFormat = variableProcessor.detectVariables(format);
     const relevantSystemVars = {};
-    variablesInFormat.forEach(v => {
-        if (systemVarValues[v] !== undefined) {
-            relevantSystemVars[v] = systemVarValues[v];
-        }
-    });
-
+    variablesInFormat.forEach(v => { if (systemVarValues[v] !== undefined) relevantSystemVars[v] = systemVarValues[v]; });
     if (Object.keys(relevantSystemVars).length > 0) {
         prompt += "System variable values (use these directly):\n";
-        for (const variable in relevantSystemVars) {
-            prompt += `- {${variable}}: ${relevantSystemVars[variable] || 'N/A'}\n`;
-        }
+        for (const variable in relevantSystemVars) { prompt += `- {${variable}}: ${relevantSystemVars[variable] || 'N/A'}\n`; }
     }
-
     prompt += "\nGenerate ONLY the commit message string, adhering strictly to the specified format and variable descriptions.";
 
     try {
-        let response;
         if (llmConfig.provider === 'ollama') {
-            const ollamaUrl = `${llmConfig.baseUrl}/api/chat`;
-            console.log(`Sending request to Ollama: ${ollamaUrl}`);
-            response = await axios.post(
-                ollamaUrl,
-                {
-                    model: llmConfig.model,
-                    messages: [{ role: 'user', content: prompt }],
-                    stream: false // Ensure we get the full response
-                },
-                { headers: { 'Content-Type': 'application/json' } }
-            );
-            // Ollama response structure
-            if (response.data && response.data.message && response.data.message.content) {
-                let message = response.data.message.content.trim();
-                message = message.replace(/^```(?:git|commit|text)?\s*/, '').replace(/```\s*$/, '');
-                message = message.replace(/^["']|["']$/g, '');
-                return message.trim();
-            } else {
-                throw new Error('Invalid Ollama API response structure.');
-            }
+            try {
+                return await callOllamaApi(prompt, llmConfig);
+            } catch (ollamaError) {
+                const canFallback = llmConfig.fallbackEnabled && isOpenRouterConfigured();
+                const shouldAttemptFallback = ollamaError.isNetworkError || (ollamaError.responseStatus && ollamaError.responseStatus >= 400 && ollamaError.responseStatus !== 401 && ollamaError.responseStatus !== 403);
 
-        } else { // Default to OpenRouter
-            const apiKey = await getApiKey(); // Get API key only if needed
-            if (!apiKey) {
-                throw new Error('Could not obtain OpenRouter API key.');
-            }
-            console.log(`Sending request to OpenRouter: ${OPENROUTER_API_URL}`);
-            response = await axios.post(
-                OPENROUTER_API_URL,
-                { model: llmConfig.model, messages: [{ role: 'user', content: prompt }] },
-                { headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': 'http://localhost',
-                    'X-Title': 'Commiat CLI',
-                  }
+                if (canFallback && shouldAttemptFallback) {
+                    console.warn(`⚠️ Ollama request failed (Status: ${ollamaError.responseStatus || 'N/A'}, Message: ${ollamaError.message}). Attempting fallback to OpenRouter...`);
+                    await fsLogError(ollamaError);
+
+                    const globalConfig = loadGlobalConfig();
+                    const openRouterModel = process.env[CONFIG_KEY_OPENROUTER_MODEL] || globalConfig[CONFIG_KEY_OPENROUTER_MODEL] || DEFAULT_OPENROUTER_MODEL;
+                    const openRouterConfig = { provider: 'openrouter', model: openRouterModel };
+
+                    return await callOpenRouterApi(prompt, openRouterConfig);
+                } else {
+                    throw ollamaError;
                 }
-            );
-            // OpenRouter response structure
-            if (response.data && response.data.choices && response.data.choices.length > 0) {
-                let message = response.data.choices[0].message.content.trim();
-                message = message.replace(/^```(?:git|commit|text)?\s*/, '').replace(/```\s*$/, '');
-                message = message.replace(/^["']|["']$/g, '');
-                return message.trim();
-            } else {
-                throw new Error('Invalid OpenRouter API response structure.');
             }
-        }
-
-    } catch (error) {
-        const logError = new Error(error.message || `Unknown API error for ${llmConfig.provider}`);
-        logError.stack = error.stack;
-        logError.provider = llmConfig.provider;
-        logError.requestUrl = llmConfig.provider === 'ollama' ? `${llmConfig.baseUrl}/api/chat` : OPENROUTER_API_URL;
-        logError.responseStatus = error.response?.status;
-        logError.responseData = error.response?.data;
-        await fsLogError(logError);
-
-        if (error.response) {
-            console.error(`API Error (${llmConfig.provider}) Status:`, error.response.status);
-            console.error(`API Error (${llmConfig.provider}) Data:`, error.response.data);
-            if (llmConfig.provider === 'openrouter' && error.response.status === 401) {
-                console.error('\n❌ OpenRouter authentication failed. Your API key might be invalid or expired.');
-            } else if (llmConfig.provider === 'ollama') {
-                 console.error(`\n❌ Ollama request failed. Ensure Ollama is running at ${llmConfig.baseUrl} and the model '${llmConfig.model}' is available.`);
-            }
-            throw new Error(`${llmConfig.provider} API request failed: ${error.response.status} ${error.response.data?.error?.message || JSON.stringify(error.response.data)}`);
-        } else if (error.request) {
-            throw new Error(`No response received from ${llmConfig.provider} API. Check network connection or ${llmConfig.provider} status.`);
         } else {
-            throw new Error(`Error setting up ${llmConfig.provider} API request: ${error.message}`);
+            return await callOpenRouterApi(prompt, llmConfig);
         }
+    } catch (error) {
+        await fsLogError(error);
+        console.error(`\n❌ Failed to generate commit message using ${error.provider || 'configured provider'}.`);
+        if (error.provider === 'ollama') {
+            console.error(`Ensure Ollama is running at ${error.requestUrl?.replace('/api/chat','')} and the model is available.`);
+            if (llmConfig.fallbackEnabled && !isOpenRouterConfigured()) {
+                console.error(`Fallback to OpenRouter is enabled, but OpenRouter API key is not configured.`);
+            }
+        } else if (error.provider === 'openrouter') {
+            if (error.isAuthenticationError) {
+                console.error('OpenRouter authentication failed. Check your API key.');
+            } else {
+                console.error(`OpenRouter request failed (Status: ${error.responseStatus || 'N/A'}). Check OpenRouter status or your network.`);
+            }
+        }
+        throw new Error(`Commit message generation failed: ${error.message}`);
     }
 }
 
@@ -327,7 +390,7 @@ async function promptUser(initialMessage) {
         },
       ]);
       currentMessage = adjustedMessage.trim();
-    } else { // cancel
+    } else {
       return null;
     }
   }
@@ -337,14 +400,12 @@ async function promptUser(initialMessage) {
 async function mainAction(options) {
   console.log('Commiat CLI - Generating commit message...');
   try {
-    // 1. Load Local Config
     let localConfig = await localConfigManager.loadConfig();
     const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
     if (!localConfig) {
       console.log(`Using default format: "${format}"`);
     }
 
-    // 2. Handle Staging
     if (options.addAll) {
       console.log('Staging all changes (`git add .`)...');
       await git.add('.');
@@ -368,10 +429,8 @@ async function mainAction(options) {
       }
     }
 
-    // 3. Ensure Staged Files Exist and Get Diff
     const diff = await ensureStagedFiles();
 
-    // 4. Detect Variables and Prompt for Descriptions (if needed)
     const variablesInFormat = variableProcessor.detectVariables(format);
     if (localConfig && variablesInFormat.length > 0) {
       const configWasUpdated = await variableProcessor.promptForMissingVariableDescriptions(variablesInFormat, localConfig);
@@ -383,19 +442,15 @@ async function mainAction(options) {
       }
     }
 
-    // 5. Get System Variable Values
     const systemVarValues = await variableProcessor.getSystemVariableValues();
 
-    // 6. Generate Initial Commit Message
     const initialCommitMessage = await generateCommitMessage(diff, localConfig, systemVarValues);
 
-    // 7. Prompt User for Confirmation/Adjustment
     const finalCommitMessage = await promptUser(initialCommitMessage);
 
-    // 8. Commit or Cancel
     if (finalCommitMessage) {
       const commitOptions = {};
-      if (options.verify === false) { // Correct check for --no-verify
+      if (options.verify === false) {
         commitOptions['--no-verify'] = null;
         console.log('Committing with --no-verify flag...');
       } else {
@@ -425,72 +480,54 @@ async function testLlmCompletion() {
     console.log(`- Model: ${llmConfig.model}`);
     if (llmConfig.provider === 'ollama') {
         console.log(`- Base URL: ${llmConfig.baseUrl}`);
+        console.log(`- Fallback Enabled: ${llmConfig.fallbackEnabled}`);
     }
 
     try {
-        let response;
+        let output;
         if (llmConfig.provider === 'ollama') {
-            const ollamaUrl = `${llmConfig.baseUrl}/api/chat`;
-            response = await axios.post(
-                ollamaUrl,
-                { model: llmConfig.model, messages: [{ role: 'user', content: testPrompt }], stream: false },
-                { headers: { 'Content-Type': 'application/json' } }
-            );
-            if (response.data && response.data.message && response.data.message.content) {
-                const output = response.data.message.content.trim();
-                console.log(`\nOutput:`);
-                console.log(`- Response: "${output}"`);
+            try {
+                output = await callOllamaApi(testPrompt, llmConfig);
                 console.log('\n✅ Ollama test successful!');
-            } else {
-                throw new Error('Invalid Ollama API response structure during test.');
-            }
-        } else { // OpenRouter
-            const apiKey = await getApiKey();
-            if (!apiKey) {
-                console.error('❌ Could not obtain OpenRouter API key. Configure it first using `commiat config`.');
-                process.exit(1);
-            }
-            response = await axios.post(
-                OPENROUTER_API_URL,
-                { model: llmConfig.model, messages: [{ role: 'user', content: testPrompt }] },
-                { headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': 'http://localhost',
-                    'X-Title': 'Commiat CLI Test',
-                  }
-                }
-            );
-            if (response.data && response.data.choices && response.data.choices.length > 0) {
-                const output = response.data.choices[0].message.content.trim();
-                console.log(`\nOutput:`);
-                console.log(`- Response: "${output}"`);
-                console.log('\n✅ OpenRouter test successful!');
-            } else {
-                throw new Error('Invalid OpenRouter API response structure during test.');
-            }
-        }
-    } catch (error) {
-        const logError = new Error(error.message || `Unknown API error during ${llmConfig.provider} test`);
-        logError.stack = error.stack;
-        logError.provider = llmConfig.provider;
-        logError.responseStatus = error.response?.status;
-        logError.responseData = error.response?.data;
-        await fsLogError(logError);
+            } catch (ollamaError) {
+                const canFallback = llmConfig.fallbackEnabled && isOpenRouterConfigured();
+                const shouldAttemptFallback = ollamaError.isNetworkError || (ollamaError.responseStatus && ollamaError.responseStatus >= 400 && ollamaError.responseStatus !== 401 && ollamaError.responseStatus !== 403);
 
-        console.error(`\n❌ Test failed: API request error for ${llmConfig.provider}.`);
-        if (error.response) {
-            console.error('- Status:', error.response.status);
-            console.error('- Data:', error.response.data);
-            if (llmConfig.provider === 'openrouter' && error.response.status === 401) {
-                console.error('\nHint: OpenRouter authentication failed. Check your API key.');
-            } else if (llmConfig.provider === 'ollama') {
-                console.error(`\nHint: Ensure Ollama is running at ${llmConfig.baseUrl} and the model '${llmConfig.model}' is available.`);
+                if (canFallback && shouldAttemptFallback) {
+                    console.warn(`⚠️ Ollama test failed (Status: ${ollamaError.responseStatus || 'N/A'}, Message: ${ollamaError.message}). Attempting fallback test with OpenRouter...`);
+                    await fsLogError(ollamaError);
+
+                    const globalConfig = loadGlobalConfig();
+                    const openRouterModel = process.env[CONFIG_KEY_OPENROUTER_MODEL] || globalConfig[CONFIG_KEY_OPENROUTER_MODEL] || DEFAULT_OPENROUTER_MODEL;
+                    const openRouterConfig = { provider: 'openrouter', model: openRouterModel };
+
+                    output = await callOpenRouterApi(testPrompt, openRouterConfig);
+                    console.log('\n✅ OpenRouter fallback test successful!');
+                } else {
+                    throw ollamaError;
+                }
             }
-        } else if (error.request) {
-            console.error(`- Error: No response received from ${llmConfig.provider} API.`);
         } else {
-            console.error('- Error:', error.message);
+            output = await callOpenRouterApi(testPrompt, llmConfig);
+            console.log('\n✅ OpenRouter test successful!');
+        }
+
+        console.log(`\nOutput:`);
+        console.log(`- Response: "${output}"`);
+    } catch (error) {
+        await fsLogError(error);
+        console.error(`\n❌ Test failed for ${error.provider || 'configured provider'}.`);
+        if (error.provider === 'ollama') {
+            console.error(`Ensure Ollama is running at ${error.requestUrl?.replace('/api/chat','')} and the model is available.`);
+            if (llmConfig.fallbackEnabled && !isOpenRouterConfigured()) {
+                console.error(`Fallback to OpenRouter is enabled, but OpenRouter API key is not configured.`);
+            }
+        } else if (error.provider === 'openrouter') {
+            if (error.isAuthenticationError) {
+                console.error('OpenRouter authentication failed. Check your API key.');
+            } else {
+                console.error(`OpenRouter request failed (Status: ${error.responseStatus || 'N/A'}). Check OpenRouter status or your network.`);
+            }
         }
         process.exit(1);
     }
@@ -502,51 +539,39 @@ async function configureOllama() {
     const currentUseOllama = currentConfig[CONFIG_KEY_USE_OLLAMA] === 'true';
     const currentBaseUrl = currentConfig[CONFIG_KEY_OLLAMA_BASE_URL] || DEFAULT_OLLAMA_BASE_URL;
     const currentModel = currentConfig[CONFIG_KEY_OLLAMA_MODEL] || DEFAULT_OLLAMA_MODEL;
+    const currentFallback = currentConfig[CONFIG_KEY_OLLAMA_FALLBACK] === 'true';
 
     console.log(`\n--- Ollama Configuration ---`);
-    console.log(`Current setting: ${currentUseOllama ? `Enabled (URL: ${currentBaseUrl}, Model: ${currentModel})` : 'Disabled'}`);
+    console.log(`Current setting: ${currentUseOllama ? `Enabled (URL: ${currentBaseUrl}, Model: ${currentModel}, Fallback: ${currentFallback})` : 'Disabled'}`);
 
     const { useOllama } = await inquirer.prompt([
-        {
-            type: 'confirm',
-            name: 'useOllama',
-            message: 'Enable Ollama for commit message generation?',
-            default: currentUseOllama,
-        }
+        { type: 'confirm', name: 'useOllama', message: 'Enable Ollama for commit message generation?', default: currentUseOllama }
     ]);
 
     if (useOllama) {
-        const { baseUrl } = await inquirer.prompt([
-            {
-                type: 'input',
-                name: 'baseUrl',
-                message: `Enter Ollama base URL (leave blank for default: ${DEFAULT_OLLAMA_BASE_URL}):`,
-                default: currentBaseUrl,
-            }
+        const answers = await inquirer.prompt([
+            { type: 'input', name: 'baseUrl', message: `Enter Ollama base URL (leave blank for default: ${DEFAULT_OLLAMA_BASE_URL}):`, default: currentBaseUrl },
+            { type: 'input', name: 'model', message: `Enter Ollama model name (leave blank for default: ${DEFAULT_OLLAMA_MODEL}):`, default: currentModel },
+            { type: 'confirm', name: 'fallback', message: 'Enable fallback to OpenRouter if Ollama fails (requires OpenRouter API key)?', default: currentFallback }
         ]);
-        const finalBaseUrl = baseUrl.trim() || DEFAULT_OLLAMA_BASE_URL;
 
-        const { model } = await inquirer.prompt([
-             {
-                type: 'input',
-                name: 'model',
-                message: `Enter Ollama model name (leave blank for default: ${DEFAULT_OLLAMA_MODEL}):`,
-                default: currentModel,
-            }
-        ]);
-        const finalModel = model.trim() || DEFAULT_OLLAMA_MODEL;
-
+        const finalBaseUrl = answers.baseUrl.trim() || DEFAULT_OLLAMA_BASE_URL;
+        const finalModel = answers.model.trim() || DEFAULT_OLLAMA_MODEL;
+        const finalFallback = answers.fallback;
 
         updateGlobalConfig(CONFIG_KEY_USE_OLLAMA, 'true');
         updateGlobalConfig(CONFIG_KEY_OLLAMA_BASE_URL, finalBaseUrl);
         updateGlobalConfig(CONFIG_KEY_OLLAMA_MODEL, finalModel);
-        console.log(`✅ Ollama enabled. Base URL set to ${finalBaseUrl}, Model set to ${finalModel}.`);
+        updateGlobalConfig(CONFIG_KEY_OLLAMA_FALLBACK, finalFallback ? 'true' : 'false');
+
+        console.log(`✅ Ollama enabled. Base URL: ${finalBaseUrl}, Model: ${finalModel}, Fallback: ${finalFallback}.`);
+        if (finalFallback && !isOpenRouterConfigured()) {
+            console.warn(`⚠️ Fallback enabled, but OpenRouter API key is not configured. Fallback will not work until an API key is set (via env or 'commiat config').`);
+        }
         console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
     } else {
-        updateGlobalConfig(CONFIG_KEY_USE_OLLAMA, 'false'); // Explicitly set to false
-        // Optionally remove URL/Model or leave them
-        // updateGlobalConfig(CONFIG_KEY_OLLAMA_BASE_URL, '');
-        // updateGlobalConfig(CONFIG_KEY_OLLAMA_MODEL, '');
+        updateGlobalConfig(CONFIG_KEY_USE_OLLAMA, 'false');
+        updateGlobalConfig(CONFIG_KEY_OLLAMA_FALLBACK, 'false');
         console.log(`⚪ Ollama disabled. Commiat will use OpenRouter (if configured).`);
         console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
     }
@@ -554,8 +579,8 @@ async function configureOllama() {
 
 // --- Program Definition ---
 program
-  .version('1.2.0') // Bump version for Ollama support
-  .description('Auto-generate commit messages using AI (OpenRouter or Ollama). Uses staged changes by default.');
+  .version('1.3.0')
+  .description('Auto-generate commit messages using AI (OpenRouter or Ollama with optional fallback). Uses staged changes by default.');
 
 program
   .option('-a, --add-all', 'Stage all changes (`git add .`) before committing')
@@ -565,13 +590,13 @@ program
 program
   .command('config')
   .description('Manage GLOBAL OpenRouter configuration (~/.commiat/config). Opens editor by default.')
-  .option('-t, --test', 'Test the configured LLM API connection and model (OpenRouter OR Ollama)')
+  .option('-t, --test', 'Test the configured LLM API connection and model (OpenRouter OR Ollama w/ fallback)')
   .action(async (options) => {
     if (options.test) {
       await testLlmCompletion();
     } else {
       console.log('Note: This command edits the GLOBAL configuration file.');
-      console.log(`Use 'commiat ollama' to configure Ollama settings.`);
+      console.log(`Use 'commiat ollama' to configure Ollama settings (including fallback).`);
       console.log(`For project-specific format, create a ${localConfigManager.LOCAL_CONFIG_FILENAME} file in your project root.`);
       openConfigInEditor();
     }
@@ -579,7 +604,7 @@ program
 
 program
     .command('ollama')
-    .description('Configure Ollama settings (enable/disable, base URL, model) in the GLOBAL config.')
+    .description('Configure Ollama settings (enable/disable, base URL, model, fallback) in the GLOBAL config.')
     .action(configureOllama);
 
 program.parse(process.argv);
