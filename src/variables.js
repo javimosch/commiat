@@ -1,13 +1,15 @@
 const inquirer = require('inquirer');
-const { getGitBranch } = require('./utils/git');
-const { saveConfig } = require('./config'); // To save updated descriptions
+const { getGitBranch, getGitBranchNumber } = require('./utils/git');
+const { saveConfig, LOCAL_CONFIG_FILENAME } = require('./config');
 
 const SYSTEM_VARIABLE_HANDLERS = {
   gitBranch: getGitBranch,
-  // 'type' is handled implicitly by the LLM prompt based on diff
+  gitBranchNumber: getGitBranchNumber,
+  // 'type' is handled implicitly by the LLM prompt based on diff,
+  // but we need to ensure it's not treated as a custom variable below.
 };
 
-const VARIABLE_REGEX = /\{([a-zA-Z0-9_]+)\}/g; // Matches {variableName}
+const VARIABLE_REGEX = /\{([a-zA-Z0-9_]+)\}/g;
 
 /**
  * Extracts all variable names (e.g., "type", "context") from a format string.
@@ -18,28 +20,29 @@ function detectVariables(format) {
   const matches = format.matchAll(VARIABLE_REGEX);
   const variables = new Set();
   for (const match of matches) {
-    variables.add(match[1]); // match[1] is the captured group
+    variables.add(match[1]);
   }
-  // 'msg' is implicitly handled by the LLM, not treated as a standard variable here
-  variables.delete('msg');
+  variables.delete('msg'); // 'msg' is always handled implicitly by the LLM
   return Array.from(variables);
 }
 
 /**
- * Gets the values for system variables (like gitBranch).
- * @returns {Promise&lt;object&gt;} An object mapping system variable names to their values.
+ * Gets the values for system variables (like gitBranch, gitBranchNumber).
+ * @returns {Promise<object>} An object mapping system variable names to their values.
  */
 async function getSystemVariableValues() {
-    const values = {};
-    for (const varName in SYSTEM_VARIABLE_HANDLERS) {
-        try {
-            values[varName] = await SYSTEM_VARIABLE_HANDLERS[varName]();
-        } catch (error) {
-            console.warn(`⚠️ Could not retrieve value for system variable {${varName}}: ${error.message}`);
-            values[varName] = ''; // Provide empty string as fallback
-        }
+  const values = {};
+  const promises = Object.entries(SYSTEM_VARIABLE_HANDLERS).map(async ([varName, handler]) => {
+    try {
+      const value = await handler();
+      values[varName] = value;
+    } catch (error) {
+      console.warn(`⚠️ Could not retrieve value for system variable {${varName}}: ${error.message}`);
+      values[varName] = '';
     }
-    return values;
+  });
+  await Promise.all(promises);
+  return values;
 }
 
 /**
@@ -47,15 +50,19 @@ async function getSystemVariableValues() {
  * Updates the config object in place and saves it.
  * @param {string[]} variables - Array of all variable names detected in the format.
  * @param {object} config - The current configuration object (will be mutated).
- * @returns {Promise&lt;boolean&gt;} True if the config was updated, false otherwise.
+ * @returns {Promise<boolean>} True if the config was updated, false otherwise.
  */
 async function promptForMissingVariableDescriptions(variables, config) {
   let configUpdated = false;
-  const customVariables = variables.filter(v => !SYSTEM_VARIABLE_HANDLERS[v] && v !== 'type' && v !== 'msg');
+  // Filter out system variables AND 'type' AND 'msg' to find truly custom ones
+  const customVariables = variables.filter(v =>
+    !SYSTEM_VARIABLE_HANDLERS[v] && v !== 'type' && v !== 'msg'
+  );
 
   const questions = [];
   for (const variable of customVariables) {
-    if (!config.variables[variable]) {
+    // Check if the variable exists and has a non-empty description in the config
+    if (!config.variables[variable] || String(config.variables[variable]).trim() === '') {
       questions.push({
         type: 'input',
         name: variable,
@@ -73,13 +80,12 @@ async function promptForMissingVariableDescriptions(variables, config) {
       configUpdated = true;
     }
     if (configUpdated) {
-        try {
-            await saveConfig(config);
-            console.log(`✅ Updated variable descriptions saved to ${config.LOCAL_CONFIG_FILENAME || '.commiat'}`);
-        } catch (error) {
-            console.error(`❌ Failed to save updated variable descriptions: ${error.message}`);
-            // Continue execution, but the descriptions won't be persisted
-        }
+      try {
+        await saveConfig(config);
+        console.log(`✅ Updated variable descriptions saved to ${LOCAL_CONFIG_FILENAME}`);
+      } catch (error) {
+        console.error(`❌ Failed to save updated variable descriptions: ${error.message}`);
+      }
     }
   }
 
@@ -90,5 +96,5 @@ module.exports = {
   detectVariables,
   getSystemVariableValues,
   promptForMissingVariableDescriptions,
-  SYSTEM_VARIABLE_HANDLERS, // Exporting for potential checks elsewhere
+  SYSTEM_VARIABLE_HANDLERS,
 };

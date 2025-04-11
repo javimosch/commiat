@@ -50,7 +50,7 @@ async function loadConfig() {
         {
             type: 'input',
             name: 'format',
-            message: 'Enter your desired commit message format:',
+            message: 'Enter your desired commit message format (Core variables: {type}, {msg}, {gitBranch}. You can add custom variables):',
             default: DEFAULT_FORMAT,
             validate: input => input.trim().length > 0 ? true : 'Format cannot be empty.'
         }
