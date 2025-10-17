@@ -198,10 +198,10 @@ You can use both `--prefix` and `--affix` together:
 
 ```bash
 # Result: "[HOTFIX] fix authentication bug (#URGENT-123)"
-commiat --prefix "[HOTFIX] " --affix " (#URGENT-123)"
+commiat --prefix "[HOTFIX]" --affix "(#URGENT-123)"
 
 # Result: "🚨 feat: add new login system [JIRA-456]"
-commiat --prefix "🚨 " --affix " [JIRA-456]"
+commiat --prefix "🚨" --affix "[JIRA-456]"
 ```
 
 ### Order of Operations
