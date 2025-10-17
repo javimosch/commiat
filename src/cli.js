@@ -482,12 +482,24 @@ async function mainAction(options) {
     const initialCommitMessage = await generateCommitMessage(diff, localConfig, systemVarValues);
     
     // Apply prefix and/or affix if provided
-    let messageToPrompt = initialCommitMessage;
-    if (options.prefix) {
-      messageToPrompt = `${options.prefix}${messageToPrompt}`;
-    }
-    if (options.affix) {
-      messageToPrompt = `${messageToPrompt} ${options.affix}`;
+    let messageToPrompt = initialCommitMessage.trim();
+    if (options.prefix || options.affix) {
+      const lines = messageToPrompt.split('\n');
+      let firstLine = lines[0] || '';
+      
+      // Apply prefix to first line
+      if (options.prefix) {
+        firstLine = `${options.prefix}${options.prefix.endsWith(' ') ? '' : ' '}${firstLine}`;
+      }
+      
+      // Apply affix to first line only
+      if (options.affix) {
+        firstLine = `${firstLine}${options.affix.startsWith(' ') ? '' : ' '}${options.affix}`;
+      }
+      
+      // Reconstruct the message with modified first line
+      lines[0] = firstLine;
+      messageToPrompt = lines.join('\n');
     }
     
     const finalCommitMessage = await promptUser(messageToPrompt);
@@ -614,7 +626,7 @@ program
 program
   .option('-a, --add-all', 'Stage all changes (`git add .`) before committing')
   .option('-n, --no-verify', 'Bypass git commit hooks')
-  .option('--prefix <string>', 'Prepend a string to the beginning of the generated commit message (e.g., --prefix "[WIP] ")')
+  .option('--prefix <string>', 'Prepend a string to the beginning of the generated commit message (e.g., --prefix "[WIP]")')
   .option('--affix <string>', 'Append a string to the end of the generated commit message (e.g., --affix "(#45789)")')
   .action(mainAction);
 

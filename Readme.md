@@ -122,13 +122,13 @@ Settings are looked for in this order:
     commiat --no-verify
 
     # Add a prefix to the commit message
-    commiat --prefix "[WIP] "
+    commiat --prefix "[WIP]"
     
     # Add a suffix/affix to the commit message  
     commiat --affix "(#12345)"
     
     # Combine multiple options
-    commiat -a --prefix "[HOTFIX] " --affix " (#URGENT-456)"
+    commiat -a --prefix "[HOTFIX]" --affix "(#URGENT-456)"
     ```
 5.  **Follow the prompts:**
     *   If it's the first time using a custom variable in `.commiat`, you'll be asked for its description.
@@ -156,25 +156,27 @@ Settings are looked for in this order:
 Commiat provides two convenient options to modify the AI-generated commit message:
 
 ### `--prefix <string>`
-Prepends a string to the beginning of the generated commit message.
+Prepends a string to the beginning of the generated commit message (first line only).
 
 **Common use cases:**
 ```bash
-# Mark work-in-progress commits
-commiat --prefix "[WIP] "
+# Mark work-in-progress commits (space added automatically)
+commiat --prefix "[WIP]"
 
 # Indicate hotfixes
-commiat --prefix "[HOTFIX] "
+commiat --prefix "[HOTFIX]"
 
 # Add urgency markers
-commiat --prefix "🚨 URGENT: "
+commiat --prefix "🚨"
 
 # Specify environment
-commiat --prefix "[PROD] "
+commiat --prefix "[PROD]"
 ```
 
+**Note:** A space is automatically added between the prefix and commit title if not already present.
+
 ### `--affix <string>`
-Appends a string to the end of the generated commit message.
+Appends a string to the end of the generated commit message (first line only).
 
 **Common use cases:**
 ```bash
@@ -203,15 +205,27 @@ commiat --prefix "🚨 " --affix " [JIRA-456]"
 ```
 
 ### Order of Operations
-1. AI generates the base commit message
-2. Prefix is added to the beginning (if provided)
-3. Affix is added to the end (if provided)
+1. AI generates the base commit message (potentially multi-line)
+2. Prefix is added to the beginning of the **first line** (if provided)
+3. Affix is added to the end of the **first line** (if provided)
 4. Final message is presented for confirmation/editing
 
 **Example:**
-- AI generates: `fix: resolve login timeout issue`
+- AI generates: 
+  ```
+  fix: resolve login timeout issue
+  
+  Updated authentication logic to handle edge cases
+  ```
 - Command: `commiat --prefix "[HOTFIX] " --affix " (#12345)"`
-- Result: `[HOTFIX] fix: resolve login timeout issue (#12345)`
+- Result: 
+  ```
+  [HOTFIX] fix: resolve login timeout issue (#12345)
+  
+  Updated authentication logic to handle edge cases
+  ```
+
+**Note:** Only the first line (commit subject) is modified. The commit body remains unchanged.
 
 ## Other Commands
 
