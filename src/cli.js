@@ -480,7 +480,17 @@ async function mainAction(options) {
 
     const systemVarValues = await variableProcessor.getSystemVariableValues();
     const initialCommitMessage = await generateCommitMessage(diff, localConfig, systemVarValues);
-    const finalCommitMessage = await promptUser(initialCommitMessage);
+    
+    // Apply prefix and/or affix if provided
+    let messageToPrompt = initialCommitMessage;
+    if (options.prefix) {
+      messageToPrompt = `${options.prefix}${messageToPrompt}`;
+    }
+    if (options.affix) {
+      messageToPrompt = `${messageToPrompt} ${options.affix}`;
+    }
+    
+    const finalCommitMessage = await promptUser(messageToPrompt);
 
     if (finalCommitMessage) {
       const commitOptions = {};
@@ -604,6 +614,8 @@ program
 program
   .option('-a, --add-all', 'Stage all changes (`git add .`) before committing')
   .option('-n, --no-verify', 'Bypass git commit hooks')
+  .option('--prefix <string>', 'Prepend a string to the beginning of the generated commit message (e.g., --prefix "[WIP] ")')
+  .option('--affix <string>', 'Append a string to the end of the generated commit message (e.g., --affix "(#45789)")')
   .action(mainAction);
 
 program

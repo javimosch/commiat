@@ -7,8 +7,9 @@ Tired of writing git commit messages? Let AI do it for you! ✨
 2.  Analyzes your staged git changes (`git diff --staged`).
 3.  Generates a commit message using an AI model via **OpenRouter** (defaults to Google Gemini Flash 1.5 ⚡) or a local **Ollama** instance (defaults to qwen2.5).
 4.  **Supports custom commit message formats** defined in a local `.commiat` file.
-5.  Prompts you to confirm ✅, adjust 📝, or cancel ❌ the commit.
-6.  Optionally bypasses git commit hooks using the `-n` or `--no-verify` flag.
+5.  **Allows prefixing and suffixing** commit messages with custom strings using `--prefix` and `--affix` options.
+6.  Prompts you to confirm ✅, adjust 📝, or cancel ❌ the commit.
+7.  Optionally bypasses git commit hooks using the `-n` or `--no-verify` flag.
 
 ## 🚀 Installation
 
@@ -120,8 +121,14 @@ Settings are looked for in this order:
     # or
     commiat --no-verify
 
-    # Combine flags
-    commiat -a -n
+    # Add a prefix to the commit message
+    commiat --prefix "[WIP] "
+    
+    # Add a suffix/affix to the commit message  
+    commiat --affix "(#12345)"
+    
+    # Combine multiple options
+    commiat -a --prefix "[HOTFIX] " --affix " (#URGENT-456)"
     ```
 5.  **Follow the prompts:**
     *   If it's the first time using a custom variable in `.commiat`, you'll be asked for its description.
@@ -143,6 +150,68 @@ Settings are looked for in this order:
 *   Run `commiat`.
 *   AI generates a message like: `feat(Auth): implement new login flow [JIRA-456]`
 *   Confirm or adjust.
+
+## 🏷️ Message Modification Options
+
+Commiat provides two convenient options to modify the AI-generated commit message:
+
+### `--prefix <string>`
+Prepends a string to the beginning of the generated commit message.
+
+**Common use cases:**
+```bash
+# Mark work-in-progress commits
+commiat --prefix "[WIP] "
+
+# Indicate hotfixes
+commiat --prefix "[HOTFIX] "
+
+# Add urgency markers
+commiat --prefix "🚨 URGENT: "
+
+# Specify environment
+commiat --prefix "[PROD] "
+```
+
+### `--affix <string>`
+Appends a string to the end of the generated commit message.
+
+**Common use cases:**
+```bash
+# Add ticket numbers
+commiat --affix "(#12345)"
+
+# Reference JIRA tickets
+commiat --affix "[JIRA-456]"
+
+# Add GitHub issue references
+commiat --affix " (closes #789)"
+
+# Add reviewer mentions
+commiat --affix " cc: @teamlead"
+```
+
+### Combining Both Options
+You can use both `--prefix` and `--affix` together:
+
+```bash
+# Result: "[HOTFIX] fix authentication bug (#URGENT-123)"
+commiat --prefix "[HOTFIX] " --affix " (#URGENT-123)"
+
+# Result: "🚨 feat: add new login system [JIRA-456]"
+commiat --prefix "🚨 " --affix " [JIRA-456]"
+```
+
+### Order of Operations
+1. AI generates the base commit message
+2. Prefix is added to the beginning (if provided)
+3. Affix is added to the end (if provided)
+4. Final message is presented for confirmation/editing
+
+**Example:**
+- AI generates: `fix: resolve login timeout issue`
+- Command: `commiat --prefix "[HOTFIX] " --affix " (#12345)"`
+- Result: `[HOTFIX] fix: resolve login timeout issue (#12345)`
 
 ## Other Commands
 
