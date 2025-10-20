@@ -553,7 +553,7 @@ async function promptForLead() {
         type: "confirm",
         name: "interested",
         message:
-          "✨ Interested in Commiat Cloud? Get AI commits, history search & more, anywhere! Early adopters get a special discount. Interested?",
+          "💡 Commiat Cloud is coming — your AI assistant that understands your commits, searches your history, and answers code questions. ⚡ Get early access free in exchange for feedback — interested?",
         default: true, // Default to yes
       },
     ]);
