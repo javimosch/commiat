@@ -31,7 +31,7 @@
     *   **Responsibility:** Handle the lead generation prompt.
     *   **Functions to move:** `promptForLead`.
     *   **Dependencies:** `inquirer`, `axios`, `src/config/global.js` (for state management), `src/utils/logger.js`.
-    *   **Constants to move/reference:** `LEAD_WEBHOOK_URL`, `STATE_KEY_LEAD_PROMPTED`.
+    *   **Constants to move/reference:** `LEAD_WEBHOOK_URL`, `STATE_KEY_LEAD_PROMPTED`, `STATE_KEY_LEAD_PROMPTED_AT`, `STATE_KEY_LEAD_PROMPTED_SUCCESS`.
 
 6.  **`src/commands/commit.js`:**
     *   **Responsibility:** Handle the main logic for the default `commiat` command (generating and committing messages).

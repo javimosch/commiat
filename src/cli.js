@@ -37,7 +37,10 @@ const CONFIG_KEY_OLLAMA_MODEL = "COMMIAT_OLLAMA_MODEL";
 const CONFIG_KEY_OLLAMA_FALLBACK = "COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER";
 
 // --- State Keys ---
+
 const STATE_KEY_LEAD_PROMPTED = "LEAD_PROMPTED";
+const STATE_KEY_LEAD_PROMPTED_AT = "LEAD_PROMPTED_AT";
+const STATE_KEY_LEAD_PROMPTED_SUCCESS = "LEAD_PROMPTED_SUCCESS";
 
 // --- Global Config/State Directory ---
 function ensureGlobalConfigDirExists() {
@@ -521,9 +524,26 @@ async function promptUser(initialMessage) {
 // --- Lead Generation Prompt ---
 async function promptForLead() {
   const currentState = loadState();
-  if (currentState[STATE_KEY_LEAD_PROMPTED] === "1") {
-    return; // Already prompted
+
+  // If lead was successfully captured, never prompt again
+  if (currentState[STATE_KEY_LEAD_PROMPTED_SUCCESS] === "1") {
+    return;
   }
+
+  const lastPromptedAt = currentState[STATE_KEY_LEAD_PROMPTED_AT];
+  const oneWeek = 7 * 24 * 60 * 60 * 1000; // One week in milliseconds
+
+  // If the user has been prompted with the new system, check if a week has passed
+  if (lastPromptedAt) {
+    const lastPromptDate = new Date(parseInt(lastPromptedAt, 10));
+    const now = new Date();
+    if (now - lastPromptDate < oneWeek) {
+      return; // Not enough time has passed, so don't prompt
+    }
+  }
+
+  // For backward compatibility, if the old key exists and the new one doesn't,
+  // it's treated as if a week has expired, so we proceed to prompt.
 
   console.log("\n---\n"); // Separator
 
@@ -534,7 +554,7 @@ async function promptForLead() {
         name: "interested",
         message:
           "✨ Interested in Commiat Cloud? Get AI commits, history search & more, anywhere! Early adopters get a special discount. Interested?",
-        default: false,
+        default: true, // Default to yes
       },
     ]);
 
@@ -546,7 +566,6 @@ async function promptForLead() {
           message:
             "Great! Please enter your email to receive the early access link when available",
           validate: (input) => {
-            // Basic email format check
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return emailRegex.test(input)
               ? true
@@ -556,16 +575,19 @@ async function promptForLead() {
       ]);
 
       if (email) {
-        const webhookUrlWithEmail = `${LEAD_WEBHOOK_URL}?email=${encodeURIComponent(email)}`;
+        const webhookUrlWithEmail = `${LEAD_WEBHOOK_URL}?email=${encodeURIComponent(
+          email,
+        )}`;
         console.log("Sending your interest...");
         try {
-          await axios.get(webhookUrlWithEmail, { timeout: 5000 }); // Short timeout, fire and forget
+          await axios.get(webhookUrlWithEmail, { timeout: 5000 });
           console.log("Thanks! We'll be in touch.");
+          // On successful email submission, mark as success
+          updateState(STATE_KEY_LEAD_PROMPTED_SUCCESS, "1");
         } catch (webhookError) {
           console.warn(
             "Could not send email interest automatically, but we appreciate your interest!",
           );
-          // Log the specific error for debugging if needed, but don't block user
           await fsLogError(
             new Error(`Webhook failed: ${webhookError.message}`),
           );
@@ -580,8 +602,13 @@ async function promptForLead() {
     console.warn("Could not display the interest prompt.");
     await fsLogError(new Error(`Lead prompt failed: ${promptError.message}`));
   } finally {
-    // Always mark as prompted to avoid asking again
-    updateState(STATE_KEY_LEAD_PROMPTED, "1");
+    // Always update the timestamp and clean up the old key
+    const newState = { ...currentState };
+    newState[STATE_KEY_LEAD_PROMPTED_AT] = Date.now().toString();
+    if (newState[STATE_KEY_LEAD_PROMPTED]) {
+      delete newState[STATE_KEY_LEAD_PROMPTED];
+    }
+    saveState(newState);
     console.log("\n---\n");
   }
 }
