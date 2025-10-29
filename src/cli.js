@@ -18,7 +18,7 @@ const git = simpleGit();
 
 // --- Constants ---
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_OPENROUTER_MODEL = "google/gemini-flash-1.5";
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash";
 const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "llama3";
 const DEFAULT_CONVENTIONAL_FORMAT = "{type}: {msg}";
