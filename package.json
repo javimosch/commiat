@@ -1,6 +1,6 @@
 {
   "name": "commiat",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Tired of writing git commit messages? Let AI do it for you! ✨",
   "main": "index.js",
   "bin": {
