@@ -11,6 +11,8 @@ const os = require("os");
 const { spawn } = require("child_process");
 const dotenv = require("dotenv");
 
+inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
+
 const localConfigManager = require("./config");
 const variableProcessor = require("./variables");
 
@@ -18,7 +20,7 @@ const git = simpleGit();
 
 // --- Constants ---
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash-lite";
 const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "llama3";
 const DEFAULT_CONVENTIONAL_FORMAT = "{type}: {msg}";
@@ -883,6 +885,53 @@ async function configureOllama() {
   }
 }
 
+async function selectModel() {
+  console.log("Fetching OpenRouter models...");
+  try {
+    const { data } = await axios.get("https://openrouter.ai/api/v1/models");
+    let models = data.data
+      .map(m => ({
+        name: `${m.name} - ${m.id}`,
+        value: m.id
+      }))
+      .filter(m => m.name && m.value); // ensure valid
+
+    if (models.length === 0) {
+      console.log("No models available.");
+      return;
+    }
+
+    const { selected } = await inquirer.prompt([
+      {
+        type: "autocomplete",
+        name: "selected",
+        message: "Search and select a model (type to filter):",
+        source: (answers, input) => {
+          input = input || "";
+          return models
+            .filter(m => 
+              m.name.toLowerCase().includes(input.toLowerCase()) ||
+              m.value.toLowerCase().includes(input.toLowerCase())
+            )
+            .slice(0, 20); // limit results
+        },
+        pageSize: 7,
+      }
+    ]);
+
+    if (selected) {
+      updateGlobalConfig(CONFIG_KEY_OPENROUTER_MODEL, selected);
+      console.log(`\n✅ Set OpenRouter model to: ${selected}`);
+      console.log(`It will be used next time you run 'commiat'. You can also edit ${GLOBAL_CONFIG_PATH} manually.`);
+    }
+  } catch (error) {
+    console.error(`Failed to fetch models or select: ${error.message}`);
+    if (error.response) {
+      console.error(`Status: ${error.response.status}`);
+    }
+  }
+}
+
 // --- Program Definition ---
 program
   .version("1.4.0") // Bump version for lead prompt
@@ -933,5 +982,10 @@ program
     "Configure Ollama settings (enable/disable, base URL, model, fallback) in the GLOBAL config.",
   )
   .action(configureOllama);
+
+program
+  .command("model select")
+  .description("Select an OpenRouter model using autocomplete search. Recommended: google/gemini-2.5-flash-lite")
+  .action(selectModel);
 
 program.parse(process.argv);
