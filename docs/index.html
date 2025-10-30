@@ -63,6 +63,44 @@
                 color: #4ec9b0;
             }
         </style>
+        <style>
+            /* Toast Notification Styles */
+            .toast-container {
+                position: fixed;
+                bottom: 1.5rem;
+                right: 1.5rem;
+                z-index: 1000;
+                display: flex;
+                flex-direction: column-reverse; /* New toasts appear on top */
+                gap: 0.75rem;
+            }
+            .toast {
+                background-color: #333;
+                color: #fff;
+                padding: 0.75rem 1.25rem;
+                border-radius: 0.375rem;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                opacity: 0;
+                transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+                transform: translateY(20px);
+                min-width: 250px;
+                max-width: 350px;
+            }
+            .toast.show {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            .toast.success {
+                background-color: #28a745; /* Green for success */
+            }
+            .toast.error {
+                background-color: #dc3545; /* Red for error */
+            }
+            .toast.warning {
+                background-color: #ffc107; /* Yellow for warning */
+                color: #333;
+            }
+        </style>
     </head>
     <body class="font-sans antialiased text-gray-800">
         <!-- Navigation -->
@@ -919,11 +957,32 @@
             </div>
         </footer>
 
+        <div id="toast-container" class="toast-container"></div>
+
         <script>
+            // Toast Notification System
+            function showToast(message, type = "success", duration = 5000) {
+                const toastContainer = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.classList.add('toast', type);
+                toast.textContent = message;
+                toastContainer.appendChild(toast);
+
+                // Trigger reflow to enable transition
+                void toast.offsetWidth; 
+                toast.classList.add('show');
+
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    toast.addEventListener('transitionend', () => {
+                        toast.remove();
+                    });
+                }, duration);
+            }
+
             document.addEventListener('DOMContentLoaded', () => {
                 const earlyAccessForm = document.getElementById('early-access-form');
                 const earlyAccessEmailInput = document.getElementById('early-access-email');
-                const earlyAccessMessage = document.getElementById('early-access-message');
                 const LEAD_WEBHOOK_URL = "https://activepieces.coolify.intrane.fr/api/v1/webhooks/Uo0638ojR53Psjs2PFAgG";
 
                 earlyAccessForm.addEventListener('submit', async (e) => {
@@ -931,34 +990,29 @@
                     const email = earlyAccessEmailInput.value;
 
                     if (!email) {
-                        earlyAccessMessage.textContent = 'Please enter your email address.';
-                        earlyAccessMessage.classList.remove('hidden');
-                        earlyAccessMessage.classList.remove('text-green-300', 'text-red-300');
-                        earlyAccessMessage.classList.add('text-yellow-300');
+                        showToast("Please enter your email address.", "warning");
                         return;
                     }
 
-                    earlyAccessMessage.textContent = 'Submitting your email...';
-                    earlyAccessMessage.classList.remove('hidden', 'text-green-300', 'text-red-300', 'text-yellow-300');
-                    earlyAccessMessage.classList.add('text-white');
+                    showToast("Submitting your email...", "info", 3000); // 'info' type for submitting
 
                     try {
                         const response = await fetch(`${LEAD_WEBHOOK_URL}?email=${encodeURIComponent(email)}`, {
-                            method: 'GET', // Webhooks often use GET for simple data
-                            mode: 'no-cors' // Required for cross-origin requests to opaque responses
+                            method: 'GET',
+                            // Removed 'mode: no-cors' to allow checking response.ok
                         });
 
-                        // Since mode is 'no-cors', we can't check response.ok directly.
-                        // We assume success if no network error occurred.
-                        earlyAccessMessage.textContent = 'Thanks for your interest! We'll be in touch.';
-                        earlyAccessMessage.classList.remove('text-white', 'text-red-300', 'text-yellow-300');
-                        earlyAccessMessage.classList.add('text-green-300');
-                        earlyAccessEmailInput.value = ''; // Clear the input field
+                        if (response.ok) {
+                            showToast("Thanks for your interest! We'll be in touch.", "success");
+                            earlyAccessEmailInput.value = ''; // Clear the input field
+                        } else {
+                            const errorText = await response.text();
+                            console.error("Error submitting early access form:", response.status, errorText);
+                            showToast("There was an error. Please try again later.", "error");
+                        }
                     } catch (error) {
-                        console.error('Error submitting early access form:', error);
-                        earlyAccessMessage.textContent = 'There was an error. Please try again later.';
-                        earlyAccessMessage.classList.remove('text-white', 'text-green-300', 'text-yellow-300');
-                        earlyAccessMessage.classList.add('text-red-300');
+                        console.error("Error submitting early access form:", error);
+                        showToast("There was a network error. Please check your connection and try again.", "error");
                     }
                 });
             });
