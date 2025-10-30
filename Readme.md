@@ -5,7 +5,7 @@ Tired of writing git commit messages? Let AI do it for you! ✨
 `commiat` is a simple CLI tool that:
 1.  Optionally stages all changes (`git add .`) if you use the `-a` or `--add-all` flag.
 2.  Analyzes your staged git changes (`git diff --staged`).
-3.  Generates a commit message using an AI model via **OpenRouter** (defaults to Google Gemini Flash 1.5 ⚡) or a local **Ollama** instance (defaults to qwen2.5).
+3.  Generates a commit message using an AI model via **OpenRouter** (defaults to Google Gemini 2.5 Flash Lite ⚡) or a local **Ollama** instance (defaults to qwen2.5).
 4.  **Supports custom commit message formats** defined in a local `.commiat` file.
 5.  **Allows prefixing and suffixing** commit messages with custom strings using `--prefix` and `--affix` options.
 6.  Prompts you to confirm ✅, adjust 📝, or cancel ❌ the commit.
@@ -47,7 +47,7 @@ This file stores settings that apply across all your projects, primarily your LL
 *   **Key Settings:**
     *   **OpenRouter:**
         *   `COMMIAT_OPENROUTER_API_KEY`: Your OpenRouter API key (required if using OpenRouter). If not found here or in environment variables, you'll be prompted.
-        *   `COMMIAT_OPENROUTER_MODEL`: The default OpenRouter model ID (e.g., `google/gemini-flash-1.5`, `anthropic/claude-3-haiku`). Defaults to `google/gemini-flash-1.5`.
+        *   `COMMIAT_OPENROUTER_MODEL`: The default OpenRouter model ID (e.g., `google/gemini-2.5-flash-lite`, `anthropic/claude-3-haiku`). Defaults to `google/gemini-2.5-flash-lite`.
     *   **Ollama:** (Managed via `commiat ollama`)
         *   `COMMIAT_USE_OLLAMA`: Set to `true` to use Ollama instead of OpenRouter. Defaults to `false`.
         *   `COMMIAT_OLLAMA_BASE_URL`: The base URL for your running Ollama instance. Defaults to `http://localhost:11434`.
@@ -91,7 +91,7 @@ Settings are looked for in this order:
 3.  **Global `~/.commiat/config` File:** Used for LLM provider settings if not set by environment variables.
 4.  **Prompts / Defaults:**
     *   If using OpenRouter and `COMMIAT_OPENROUTER_API_KEY` is not found, you'll be prompted, and it will be saved globally.
-    *   If LLM provider settings are not found, defaults are used (OpenRouter with Gemini Flash, or Ollama with llama3 if enabled).
+    *   If LLM provider settings are not found, defaults are used (OpenRouter with Gemini 2.5 Flash Lite, or Ollama with llama3 if enabled).
     *   If `.commiat` is not found, a standard conventional commit format (`{type}: {msg}`) is used. If `.commiat` is missing custom variable descriptions, you'll be prompted.
 
 ## ▶️ Usage
@@ -129,6 +129,9 @@ Settings are looked for in this order:
     
     # Combine multiple options
     commiat -a --prefix "[HOTFIX]" --affix "(#URGENT-456)"
+
+    # Enable multi-commit mode
+    commiat --multi --untracked -n
     ```
 5.  **Follow the prompts:**
     *   If it's the first time using a custom variable in `.commiat`, you'll be asked for its description.
@@ -150,6 +153,99 @@ Settings are looked for in this order:
 *   Run `commiat`.
 *   AI generates a message like: `feat(Auth): implement new login flow [JIRA-456]`
 *   Confirm or adjust.
+
+## Multi-commit Mode (`--multi`)
+
+The `--multi` flag enables an interactive multi-commit workflow, allowing you to group changes logically and commit them individually. This is particularly useful for large feature branches or refactors where multiple distinct changes are made.
+
+**Example Output:**
+
+```
+commiat --multi --untracked -n
+Commiat CLI - Generating commit message...
+Loaded format from .commiat
+? No changes staged. Stage all changes now? (git add .) Yes
+Staging all changes (`git add .`)...
+Changes staged.
+Multi-commit mode enabled...
+
+Using provider: openrouter, Model: google/gemini-2.5-flash-lite
+Sending request to OpenRouter: https://openrouter.ai/api/v1/chat/completions
+Successfully parsed group results.
+
+Using provider: openrouter, Model: google/gemini-2.5-flash-lite
+Sending request to OpenRouter: https://openrouter.ai/api/v1/chat/completions
+? Suggested Commit Message:
+"chore: Update Node.js version in Dockerfile to 20.17.0-alpine"
+
+What would you like to do? ✅ Confirm and Commit
+Committing with --no-verify flag...
+✅ Group commit successful!
+
+
+Using provider: openrouter, Model: google/gemini-2.5-flash-lite
+Sending request to OpenRouter: https://openrouter.ai/api/v1/chat/completions
+? Suggested Commit Message:
+"feat: Add Dockerfile for application"
+
+What would you like to do? ✅ Confirm and Commit
+Committing with --no-verify flag...
+✅ Group commit successful!
+
+
+Processing group 3: Update automation API endpoint logging
+Files: automation-api.js
+Description: Enhances the `/health` endpoint response in the automation API to log the available API endpoints for better discoverability.
+Using provider: openrouter, Model: google/gemini-2.5-flash-lite
+Sending request to OpenRouter: https://openrouter.ai/api/v1/chat/completions
+? Suggested Commit Message:
+"feat: Add endpoint listing to automation API startup message"
+
+What would you like to do? ✅ Confirm and Commit
+Committing with --no-verify flag...
+✅ Group commit successful!
+
+
+Processing group 4: Refactor docker-compose for separate app Dockerfile
+Files: docker-compose.yml
+Description: Modifies the docker-compose file to use the new `Dockerfile.app` for the 'app' service and removes the explicit `command` which was likely redundant.
+Staged for this group: docker-compose.yml
+Loaded format from .commiat
+Detected current branch: master
+Detected current branch: master
+No number found in branch name: master
+Using provider: openrouter, Model: google/gemini-2.5-flash-lite
+Sending request to OpenRouter: https://openrouter.ai/api/v1/chat/completions
+? Suggested Commit Message:
+"feat: Add cleanup for Xvfb lock file"
+
+What would you like to do? ✅ Confirm and Commit
+Committing with --no-verify flag...
+✅ Group commit successful!
+
+
+Processing group 6: Update server startup logging for admin and public APIs
+Files: server.js
+Description: Expands the startup log messages for the admin server to include a comprehensive list of all admin API endpoints, along with a dedicated section for public API endpoints.
+Staged for this group: server.js
+Loaded format from .commiat
+Detected current branch: master
+Detected current branch: master
+No number found in branch name: master
+Using provider: openrouter, Model: google/gemini-2.5-flash-lite
+Sending request to OpenRouter: https://openrouter.ai/api/v1/chat/completions
+? Suggested Commit Message:
+"feat: Enhance server startup logs with detailed API endpoints"
+
+What would you like to do? ✅ Confirm and Commit
+Committing with --no-verify flag...
+✅ Group commit successful!
+
+
+🎉 Multi-commit process completed successfully.
+➜  substack-schedule git:(master)
+```
+
 
 ## 🏷️ Message Modification Options
 

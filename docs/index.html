@@ -86,6 +86,9 @@
                     <a href="#setup" class="hover:text-blue-500 transition"
                         >Setup</a
                     >
+                    <a href="#try-it-out" class="hover:text-blue-500 transition"
+                        >Try it out</a
+                    >
                 </div>
                 <div>
                     <a
@@ -117,8 +120,8 @@
                         >
                     </h1>
                     <p class="text-lg text-gray-600 mb-8">
-                        Commiat uses the OpenRouter API with Google Gemini Flash
-                        1.5 to generate perfect commit messages based on your
+                        Commiat uses the OpenRouter API with Google Gemini 2.5 Flash Lite
+                        to generate perfect commit messages based on your
                         staged changes.
                     </p>
                     <div
@@ -139,7 +142,7 @@
                     </div>
                     <div class="mt-8 flex items-center text-sm text-gray-500">
                         <i class="fas fa-bolt text-yellow-500 mr-2"></i>
-                        <span>Powered by OpenRouter and Gemini 1.5 Flash</span>
+                        <span>Powered by OpenRouter and Gemini 2.5 Flash Lite</span>
                     </div>
                 </div>
                 <div class="terminal shadow-2xl">
@@ -238,7 +241,7 @@
                             AI-Powered Messages
                         </h3>
                         <p class="text-gray-600">
-                            Uses OpenRouter API with Google Gemini Flash to
+                            Uses OpenRouter API with Google Gemini 2.5 Flash Lite to
                             analyze your diffs and generate clear, descriptive
                             commit messages.
                         </p>
@@ -318,11 +321,28 @@
                             <code class="bg-gray-100 px-1 rounded"
                                 >OPENROUTER_MODEL</code
                             >
-                            setting (defaults to Gemini Flash).
+                            setting (defaults to Gemini 2.5 Flash Lite).
                         </p>
                     </div>
 
-                    <!-- Feature 6 -->
+                    <!-- Feature 6 - Multi-commit Mode -->
+                    <div
+                        class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out"
+                    >
+                        <div
+                            class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4"
+                        >
+                            <i class="fas fa-layer-group text-blue-500 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-3">
+                            Multi-commit Mode
+                        </h3>
+                        <p class="text-gray-600">
+                            Group changes logically and commit them individually in an interactive workflow, perfect for large refactors.
+                        </p>
+                    </div>
+
+                    <!-- Feature 7 -->
                     <div
                         class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out"
                     >
@@ -337,6 +357,40 @@
                         <p class="text-gray-600">
                             Guided configuration when first run, securely saving
                             your OpenRouter API key to the global config.
+                        </p>
+                    </div>
+
+                    <!-- Feature 8 - Custom Commit Formats -->
+                    <div
+                        class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out"
+                    >
+                        <div
+                            class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4"
+                        >
+                            <i class="fas fa-file-code text-green-500 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-3">
+                            Custom Commit Formats
+                        </h3>
+                        <p class="text-gray-600">
+                            Define your own commit message structure using a local <code>.commiat</code> file, including custom variables.
+                        </p>
+                    </div>
+
+                    <!-- Feature 9 - Ollama Support -->
+                    <div
+                        class="feature-card bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition duration-300 ease-in-out"
+                    >
+                        <div
+                            class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4"
+                        >
+                            <i class="fas fa-server text-purple-500 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-3">
+                            Ollama Support
+                        </h3>
+                        <p class="text-gray-600">
+                            Utilize local Ollama instances for commit message generation, with optional fallback to OpenRouter.
                         </p>
                     </div>
                 </div>
@@ -389,7 +443,7 @@
                         </h3>
                         <p class="text-gray-600">
                             Commiat analyzes your staged changes using
-                            OpenRouter with Gemini Flash (or your configured
+                            OpenRouter with Gemini 2.5 Flash Lite (or your configured
                             model).
                         </p>
                     </div>
@@ -700,6 +754,37 @@
             </div>
         </section>
 
+        <!-- Try it out Section -->
+        <section id="try-it-out" class="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-white">
+            <div class="max-w-4xl mx-auto text-center">
+                <h2 class="text-3xl font-bold mb-4">Try Commiat in your browser!</h2>
+                <p class="text-gray-600 mb-8">
+                    Paste your code changes (diff format recommended) below and let AI generate a commit message for you.
+                </p>
+                <div class="bg-gray-50 p-8 rounded-lg shadow-md">
+                    <textarea
+                        id="code-diff-input"
+                        class="w-full h-48 p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 font-mono text-sm"
+                        placeholder="Paste your git diff here (e.g., output of 'git diff')..."
+                    ></textarea>
+                    <button
+                        id="generate-commit-btn"
+                        class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-md font-medium text-center transition shadow-lg w-full md:w-auto"
+                    >
+                        Generate Commit Message
+                    </button>
+                    <div id="loading-spinner" class="hidden mt-4 flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                        <p class="ml-3 text-gray-600">Generating...</p>
+                    </div>
+                    <div id="commit-output" class="mt-6 p-4 bg-gray-100 rounded-md text-left hidden">
+                        <h3 class="text-lg font-semibold mb-2">Suggested Commit Message:</h3>
+                        <p id="generated-message" class="font-mono text-gray-800 whitespace-pre-wrap"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- CTA Section -->
         <section
             class="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-gradient-to-r from-blue-500 to-purple-600 text-white"
@@ -836,6 +921,46 @@
             </div>
         </footer>
 
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const codeDiffInput = document.getElementById('code-diff-input');
+                const generateCommitBtn = document.getElementById('generate-commit-btn');
+                const loadingSpinner = document.getElementById('loading-spinner');
+                const commitOutput = document.getElementById('commit-output');
+                const generatedMessage = document.getElementById('generated-message');
+
+                generateCommitBtn.addEventListener('click', async () => {
+                    const diff = codeDiffInput.value;
+                    if (!diff.trim()) {
+                        alert('Please paste your code changes to generate a commit message.');
+                        return;
+                    }
+
+                    loadingSpinner.classList.remove('hidden');
+                    commitOutput.classList.add('hidden');
+
+                    // Simulate API call to a backend that generates commit messages
+                    // In a real application, this would be an actual fetch() call to your server
+                    const simulatedCommitMessage = await new Promise(resolve => {
+                        setTimeout(() => {
+                            // This is a placeholder. Replace with actual LLM integration.
+                            const messages = [
+                                "feat: Add new feature for user authentication",
+                                "fix: Resolve bug with login redirection",
+                                "chore: Update dependencies and refactor build process",
+                                "docs: Improve README with usage examples",
+                                "refactor: Optimize data fetching logic"
+                            ];
+                            resolve(messages[Math.floor(Math.random() * messages.length)]);
+                        }, 2000); // Simulate network delay
+                    });
+
+                    generatedMessage.textContent = simulatedCommitMessage;
+                    loadingSpinner.classList.add('hidden');
+                    commitOutput.classList.remove('hidden');
+                });
+            });
+        </script>
         <script>
             // Smooth scrolling for anchor links
             document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
