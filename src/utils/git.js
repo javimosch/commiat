@@ -58,8 +58,53 @@ async function getGitBranchNumber() {
     }
 }
 
+async function getStagedFiles() {
+  const summary = await git.diffSummary(["--staged"]);
+  return summary.files.map(f => f.file);
+}
+
+async function getUntrackedFiles() {
+  try {
+    const output = await git.raw(["ls-files", "--others", "--exclude-standard"]);
+    return output.trim().split('\n').filter(f => f.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+async function getRelevantFiles(options) {
+  let files = await getStagedFiles();
+  if (options.untracked) {
+    const untracked = await getUntrackedFiles();
+    files = [...new Set([...files, ...untracked])];
+  }
+  return files;
+}
+
+async function stageFiles(files) {
+  if (files.length === 0) return;
+  await git.add(files);
+}
+
+async function unstageAll() {
+  const staged = await getStagedFiles();
+  if (staged.length > 0) {
+    await git.reset(["--", ...staged]);
+  }
+}
+
+async function getFileStatus() {
+  return await git.status();
+}
+
 module.exports = {
   getGitBranch,
   getGitBranchNumber,
   extractNumberFromString,
+  getStagedFiles,
+  getUntrackedFiles,
+  getRelevantFiles,
+  stageFiles,
+  unstageAll,
+  getFileStatus,
 };

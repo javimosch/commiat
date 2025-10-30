@@ -17,6 +17,7 @@ const localConfigManager = require("./config");
 const variableProcessor = require("./variables");
 
 const git = simpleGit();
+const gitUtils = require("./utils/git");
 
 // --- Constants ---
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -398,7 +399,7 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
     `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,
   );
 
-  let prompt = `Generate a Git commit message based on the following diff.\n\nIMPORTANT INSTRUCTIONS ON HOW TO INTERPRET THE DIFF:\n1. A file is DELETED if its diff header contains "deleted file mode". The content of a deleted file, prefixed with '-', represents what was removed. Your commit message should reflect this deletion.\n2. A file is ADDED if its diff header contains "new file mode".\n3. A file is MODIFIED if its header does not contain "deleted file mode" or "new file mode".\n4. IGNORE PURELY FORMATTING CHANGES. Changes like whitespace, indentation, newlines, or adding/removing semicolons are not important. Focus on the semantic and logical changes to understand the real purpose of the commit.\n5. BE SPECIFIC. A good commit message provides context. Instead of a generic message like "Update file", be specific about what was changed. For example, "refactor: Simplify logic in user authentication". If a version is being updated in a file like package.json, mention the change in detail (e.g., "chore: Bump version from 1.0.0 to 1.1.0"). If a dependency is updated, mention the dependency name and the version change.\n\nAnalyze the following diff using these instructions and generate a concise, accurate commit message.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\`\n\n`;
+  let prompt = `Generate a Git commit message based on the following diff.\n\nIMPORTANT INSTRUCTIONS ON HOW TO INTERPRET THE DIFF:\n1. A file is DELETED if its diff header contains "deleted file mode". The content of a deleted file, prefixed with '-', represents what was removed. Your commit message should reflect this deletion.\n2. A file is ADDED if its diff header contains "new file mode".\n3. A file is MODIFIED if its header does not contain "deleted file mode" or "new file mode".\n4. IGNORE PURELY FORMATTING CHANGES. Changes like whitespace, indentation, newlines, or adding/removing semicolons are not important. Focus on the semantic and logical changes to understand the real purpose of the commit.\n5. BE SPECIFIC. A good commit message provides context. Instead of a generic message like "Update file", be specific about what was changed. For example, "refactor: Simplify logic in user authentication". If a version is being updated in a file like package.json, mention the change in detail (e.g., "chore: Bump version from 1.0.0 to 1.1.0"). If a dependency is updated, mention the dependency name and the version change.\n6. ONLY reference files and changes that appear in the provided diff. Do NOT mention or imply changes to files that are not present in the diff, even if they seem related.\n\nAnalyze the following diff using these instructions and generate a concise, accurate commit message.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\`\n\n`;
   const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
   prompt += `The desired commit message format is: "${format}"\n`;
   if (localConfig && Object.keys(localConfig.variables).length > 0) {
@@ -653,6 +654,13 @@ async function mainAction(options) {
       }
     }
 
+    // Handle multi-commit mode
+    if (options.multi) {
+      console.log("Multi-commit mode enabled...");
+      await handleMultiCommit(options);
+      return;
+    }
+
     const diff = await ensureStagedFiles();
 
     const variablesInFormat = variableProcessor.detectVariables(format);
@@ -727,6 +735,243 @@ async function mainAction(options) {
       // Log only if it's not an API provider error already logged
       await fsLogError(error);
     }
+    process.exit(1);
+  }
+}
+
+// --- Multi-commit handling ---
+async function handleMultiCommit(options) {
+  try {
+    // Get staged and potentially untracked files to process
+    const relevantFiles = await gitUtils.getRelevantFiles(options);
+    if (relevantFiles.length === 0) {
+      console.log("No files to commit.");
+      return;
+    }
+
+    // Get unified diff for all changes
+    const diff = await git.diff(["--staged"]);
+    
+    // If there are untracked files, add them for analysis
+    if (options.untracked) {
+      const untracked = await gitUtils.getUntrackedFiles();
+      if (untracked.length > 0) {
+        console.log(`Staging ${untracked.length} untracked files...`);
+        await git.add(untracked);
+      }
+    }
+    
+    console.log("\nAnalyzing changes to group them logically...");
+    
+    // Ask the LLM to analyze the diff and suggest logical groupings
+    const prompt = `
+You are an expert software engineer analyzing Git changes. Your job is to group changes into logical commits based on the following diff.
+
+IMPORTANT: You MUST separate unrelated changes into different groups. Do NOT group changes together just because they appear in the same diff. Each group should represent a cohesive unit of work.
+
+The changes include:
+${diff}
+    
+Your task:
+1. Carefully analyze each file and its changes to determine logical groupings
+2. SEPARATE unrelated changes (e.g., documentation updates should NOT be grouped with feature implementations)
+3. For each group, describe the nature of the changes (type: feature, fix, chore, docs, etc)
+4. Return a JSON array of objects describing logical groups with:
+   - "group": Name of the group (e.g., "frontend UI enhancements")
+   - "files": Array of file paths belonging to this group
+   - "description": Brief description of the changes included in this group
+   
+If there are multiple unrelated changes, return multiple groups. Prefer more groups over fewer groups.
+    
+Return only the JSON response without any explanation or markdown formatting.
+`;
+
+    let groupAnalysis;
+    try {
+      const llmConfig = getLlmProviderConfig();
+      groupAnalysis = await generateCommitMessage(prompt, null, {});
+      
+      // Clean up potential markdown formatting from LLM
+      let cleanResponse = groupAnalysis.trim();
+      if (cleanResponse.startsWith("```json")) {
+        cleanResponse = cleanResponse.slice(7);
+      }
+      if (cleanResponse.startsWith("`")) {
+        cleanResponse = cleanResponse.slice(1);
+      }
+      if (cleanResponse.endsWith("```")) {
+        cleanResponse = cleanResponse.slice(0, -3);
+      }
+      if (cleanResponse.endsWith("`")) {
+        cleanResponse = cleanResponse.slice(0, -1);
+      }
+      
+      // Also handle cases where LLM response includes text before JSON
+      const jsonMatch = cleanResponse.match(/\[\s*{.*}\s*\]/s);
+      if (jsonMatch) {
+        cleanResponse = jsonMatch[0];
+      }
+      
+      // Parse the JSON response from LLM
+      const parsedGroups = JSON.parse(cleanResponse);
+      console.log("Successfully parsed group results.");
+      
+      // If groupAnalysis is not an array, wrap it in array
+      const groups = Array.isArray(parsedGroups) ? parsedGroups : [parsedGroups];
+      
+      // Track if all commits were successful
+      let allSuccessful = true;
+      
+      // Process each group
+      for (let i = 0; i < groups.length; i++) {
+        const group = groups[i];
+        console.log(`\nProcessing group ${i+1}: ${group.group}`);
+        console.log(`Files: ${group.files ? group.files.join(', ') : 'None'}`);
+        console.log(`Description: ${group.description || 'None'}`);
+        
+        if (group.files && group.files.length > 0) {
+          // Unstage everything to isolate this group's changes
+          await gitUtils.unstageAll();
+
+          // Only consider files that are actually part of the current change set
+          const filesInGroup = group.files.filter((f) => relevantFiles.includes(f));
+
+          if (filesInGroup.length === 0) {
+            console.log("No matching files from this group are part of the current changes. Skipping.");
+            continue;
+          }
+
+          // Stage only files in this group
+          await git.add(filesInGroup);
+          
+          // Debug: show which files are currently staged for this group
+          try {
+            const stagedNow = await gitUtils.getStagedFiles();
+            console.log(`Staged for this group: ${stagedNow.join(', ')}`);
+          } catch {}
+          
+          // Generate commit message for this group
+          const groupDiff = await git.diff(["--staged"]); 
+          
+          const localConfig = await localConfigManager.loadConfig();
+          const systemVarValues = await variableProcessor.getSystemVariableValues();
+          
+          const groupCommitMessage = await generateCommitMessage(
+            groupDiff,
+            localConfig,
+            systemVarValues
+          );
+          
+          // Apply prefix and/or affix if provided
+          let messageToPrompt = groupCommitMessage.trim();
+          if (options.prefix || options.affix) {
+            const lines = messageToPrompt.split("\n");
+            let firstLine = lines[0] || "";
+            
+            // Apply prefix to first line
+            if (options.prefix) {
+              firstLine = `${options.prefix}${options.prefix.endsWith(" ") ? "" : " "}${firstLine}`;
+            }
+            
+            // Apply affix to first line only
+            if (options.affix) {
+              firstLine = `${firstLine}${options.affix.startsWith(" ") ? "" : " "}${options.affix}`;
+            }
+            
+            // Reconstruct the message with modified first line
+            lines[0] = firstLine;
+            messageToPrompt = lines.join("\n");
+          }
+          
+          const finalCommitMessage = await promptUser(messageToPrompt);
+          
+          if (finalCommitMessage) {
+            const commitOptions = {};
+            if (options.verify === false) {
+              commitOptions["--no-verify"] = null;
+              console.log("Committing with --no-verify flag...");
+            } else {
+              console.log("Committing...");
+            }
+            
+            await git.commit(finalCommitMessage, undefined, commitOptions);
+            console.log(`✅ Group commit successful!\n`);
+          } else {
+            console.log(`\n❌ Group ${i+1} commit cancelled.`);
+            allSuccessful = false;
+            break;
+          }
+          
+        } else {
+          console.log(`No files found in this group. Skipping.`);
+        }
+      }
+      
+      if (allSuccessful) {
+        console.log(`\n🎉 Multi-commit process completed successfully.`);
+      }
+    } catch (parseError) {
+      console.warn(`\n⚠️ Failed to parse LLM response as JSON. Falling back to single commit mode.`);
+      console.warn(`LLM Response: ${groupAnalysis}`);
+      console.warn(`Error: ${parseError.message}`);
+      
+      // Fall back to regular commit mode
+      console.log("Committing all changes in one commit...\n");
+      
+      const localConfig = await localConfigManager.loadConfig();
+      const systemVarValues = await variableProcessor.getSystemVariableValues();
+      
+      const initialCommitMessage = await generateCommitMessage(
+        diff,
+        localConfig,
+        systemVarValues,
+      );
+      
+      // Apply prefix and/or affix if provided
+      let messageToPrompt = initialCommitMessage.trim();
+      if (options.prefix || options.affix) {
+        const lines = messageToPrompt.split("\n");
+        let firstLine = lines[0] || "";
+        
+        // Apply prefix to first line
+        if (options.prefix) {
+          firstLine = `${options.prefix}${options.prefix.endsWith(" ") ? "" : " "}${firstLine}`;
+        }
+        
+        // Apply affix to first line only
+        if (options.affix) {
+          firstLine = `${firstLine}${options.affix.startsWith(" ") ? "" : " "}${options.affix}`;
+        }
+        
+        // Reconstruct the message with modified first line
+        lines[0] = firstLine;
+        messageToPrompt = lines.join("\n");
+      }
+      
+      const finalCommitMessage = await promptUser(messageToPrompt);
+      
+      if (finalCommitMessage) {
+        const commitOptions = {};
+        if (options.verify === false) {
+          commitOptions["--no-verify"] = null;
+          console.log("Committing with --no-verify flag...");
+        } else {
+          console.log("Committing...");
+        }
+        
+        await git.commit(finalCommitMessage, undefined, commitOptions);
+        console.log("\n✅ Commit successful!");
+        
+        // --- Add Lead Prompt Here ---
+        await promptForLead();
+        // --------------------------
+      } else {
+        console.log("\n❌ Commit cancelled.");
+      }
+    }
+  } catch (error) {
+    console.error(`\n❌ Error in multi-commit handling: ${error.message}`);
+    await fsLogError(error);
     process.exit(1);
   }
 }
@@ -950,6 +1195,8 @@ program
     "--affix <string>",
     'Append a string to the end of the generated commit message (e.g., --affix "(#45789)")',
   )
+  .option("--multi", "Enable multi-commit mode: group changes into logical commits using AI")
+  .option("--untracked", "Include untracked files in multi-commit grouping (they will be staged per group)")
   .action(mainAction);
 
 program
