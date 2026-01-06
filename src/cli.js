@@ -15,6 +15,7 @@ inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"))
 
 const localConfigManager = require("./config");
 const variableProcessor = require("./variables");
+const packageJson = require("../package.json");
 
 const git = simpleGit();
 const gitUtils = require("./utils/git");
@@ -1179,7 +1180,7 @@ async function selectModel() {
 
 // --- Program Definition ---
 program
-  .version("1.4.0") // Bump version for lead prompt
+  .version(packageJson.version)
   .description(
     "Auto-generate commit messages using AI (OpenRouter or Ollama with optional fallback). Uses staged changes by default.",
   );
