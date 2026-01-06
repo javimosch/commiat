@@ -38,6 +38,7 @@ const CONFIG_KEY_USE_OLLAMA = "COMMIAT_USE_OLLAMA";
 const CONFIG_KEY_OLLAMA_BASE_URL = "COMMIAT_OLLAMA_BASE_URL";
 const CONFIG_KEY_OLLAMA_MODEL = "COMMIAT_OLLAMA_MODEL";
 const CONFIG_KEY_OLLAMA_FALLBACK = "COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER";
+const CONFIG_KEY_DEFAULT_MULTI = "COMMIAT_DEFAULT_MULTI";
 
 // --- State Keys ---
 
@@ -239,6 +240,11 @@ function getLlmProviderConfig() {
       DEFAULT_OPENROUTER_MODEL;
     return { provider: "openrouter", model, fallbackEnabled: false };
   }
+}
+
+function getDefaultMultiConfig() {
+  const globalConfig = loadGlobalConfig();
+  return globalConfig[CONFIG_KEY_DEFAULT_MULTI] === "true";
 }
 
 // --- Editor Function ---
@@ -618,6 +624,11 @@ async function promptForLead() {
 
 // --- Main Action ---
 async function mainAction(options) {
+  // Apply default multi config if not explicitly set
+  if (!options.multi && getDefaultMultiConfig()) {
+    options.multi = true;
+  }
+
   console.log("Commiat CLI - Generating commit message...");
   try {
     let localConfig = await localConfigManager.loadConfig();
@@ -1208,8 +1219,30 @@ program
     "-t, --test",
     "Test the configured LLM API connection and model (OpenRouter OR Ollama w/ fallback)",
   )
+  .option(
+    "-m, --multi",
+    "Set --multi as default mode",
+  )
   .action(async (options) => {
-    if (options.test) {
+    if (options.multi) {
+      const { setMultiDefault } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "setMultiDefault",
+          message: "Set --multi as the default mode for commiat?",
+          default: true,
+        },
+      ]);
+      if (setMultiDefault) {
+        updateGlobalConfig(CONFIG_KEY_DEFAULT_MULTI, "true");
+        console.log(`✅ --multi is now enabled as default.`);
+        console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
+      } else {
+        updateGlobalConfig(CONFIG_KEY_DEFAULT_MULTI, "false");
+        console.log(`⚪ --multi is now disabled as default.`);
+        console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
+      }
+    } else if (options.test) {
       await testLlmCompletion();
     } else {
       console.log("Note: This command edits the GLOBAL configuration file.");

@@ -7,7 +7,9 @@ Key features:
 - Analyzes git diff of staged files.
 - Uses LLM to generate messages in customizable formats with variables (e.g., {type}, {msg}, {gitBranchNumber}).
 - Handles custom variable descriptions via prompts.
-- Supports --add-all, --prefix, --affix, --no-verify flags.
+- Supports --add-all, --prefix, --affix, --no-verify, --multi flags.
+- Multi-commit mode: Groups changes into logical commits using AI analysis.
+- Configurable default --multi mode via `commiat config -m`.
 - Commands: `commiat`, `commiat config`, `commiat ollama`.
 
 Repository structure (observed):
@@ -21,6 +23,8 @@ Repository structure (observed):
 - Run CLI: `npx commiat` or `commiat` (if globally installed via `npm install -g`).
 - Generate commit: `commiat` (uses staged changes; prompts if none).
 - Stage all and commit: `commiat -a` or `commiat --add-all`.
+- Multi-commit mode: `commiat --multi` (groups changes into logical commits).
+- Set --multi as default: `commiat config -m` (enables/disables default multi-commit mode).
 - Manage global config: `commiat config` (opens ~/.commiat/config in editor).
 - Test LLM: `commiat config --test`.
 - Configure Ollama: `commiat ollama` (enable/disable, set URL/model/fallback).
@@ -63,8 +67,9 @@ Git integration: Requires a Git repo with staged changes. Uses simple-git librar
 ## Important Gotchas and Non-Obvious Patterns
 - **Configs**:
   - Local: .commiat (JSON) in project root for format/variables. Auto-created on first run.
-  - Global: ~/.commiat/config (dotenv) for API keys, Ollama settings. Edited via `commiat config`.
+  - Global: ~/.commiat/config (dotenv) for API keys, Ollama settings, defaults (e.g., COMMIAT_DEFAULT_MULTI=true). Edited via `commiat config` or `commiat config -m`.
   - State: ~/.commiat/state (dotenv) tracks lead prompts (e.g., LEAD_PROMPTED_SUCCESS=1 skips forever).
+  - Default Multi: Set via `commiat config -m` -> COMMIAT_DEFAULT_MULTI=true/false in global config.
 - **Variables**:
   - System: {type} (LLM-generated), {msg} (implicit), {gitBranch}, {gitBranchNumber} (extracted from branch, e.g., "feat/123" -> "123").
   - Custom: {context} etc. - Prompted for description on first use, stored in .commiat.
