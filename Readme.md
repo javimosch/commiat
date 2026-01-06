@@ -43,7 +43,7 @@ npm install -g commiat
 This file stores settings that apply across all your projects, primarily your LLM provider choice, API keys, and default models. It uses the standard `.env` format (KEY=VALUE).
 
 *   **Location:** `~/.commiat/config` (created automatically if needed)
-*   **Managed via:** `commiat config` (for OpenRouter) and `commiat ollama` (for Ollama) commands.
+*   **Managed via:** `commiat config` (for OpenRouter), `commiat config -m` (for multi-commit default), and `commiat ollama` (for Ollama) commands.
 *   **Key Settings:**
     *   **OpenRouter:**
         *   `COMMIAT_OPENROUTER_API_KEY`: Your OpenRouter API key (required if using OpenRouter). If not found here or in environment variables, you'll be prompted.
@@ -53,6 +53,8 @@ This file stores settings that apply across all your projects, primarily your LL
         *   `COMMIAT_OLLAMA_BASE_URL`: The base URL for your running Ollama instance. Defaults to `http://localhost:11434`.
         *   `COMMIAT_OLLAMA_MODEL`: The Ollama model to use. Defaults to `llama3`.
         *   `COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER`: Set to `true` to automatically fall back to OpenRouter if the Ollama request fails (requires OpenRouter API key to be configured). Defaults to `false`.
+    *   **Multi-Commit Mode:** (Managed via `commiat config -m`)
+        *   `COMMIAT_DEFAULT_MULTI`: Set to `true` to enable multi-commit mode by default. Defaults to `false`.
 
 ### 2. Project-Specific Format Configuration (`.commiat`)
 
@@ -86,7 +88,7 @@ This optional file, placed in your project's root directory, allows you to defin
 
 Settings are looked for in this order:
 
-1.  **Environment Variables / Local `.env` File:** `COMMIAT_OPENROUTER_API_KEY`, `COMMIAT_OPENROUTER_MODEL`, `COMMIAT_USE_OLLAMA`, `COMMIAT_OLLAMA_BASE_URL`, `COMMIAT_OLLAMA_MODEL`, `COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER` set in your shell or a project-local `.env` file override everything else.
+1.  **Environment Variables / Local `.env` File:** `COMMIAT_OPENROUTER_API_KEY`, `COMMIAT_OPENROUTER_MODEL`, `COMMIAT_USE_OLLAMA`, `COMMIAT_OLLAMA_BASE_URL`, `COMMIAT_OLLAMA_MODEL`, `COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER`, `COMMIAT_DEFAULT_MULTI` set in your shell or a project-local `.env` file override everything else.
 2.  **Project `.commiat` File:** If present, the `format` and `variables` defined here are used for commit message generation.
 3.  **Global `~/.commiat/config` File:** Used for LLM provider settings if not set by environment variables.
 4.  **Prompts / Defaults:**
@@ -339,6 +341,13 @@ commiat --prefix "🚨" --affix "[JIRA-456]"
     Checks connection and basic generation using your currently configured provider (OpenRouter OR Ollama w/ fallback).
     ```bash
     commiat config --test
+    ```
+*   **Set `--multi` as Default Mode:**
+    Interactively enables or disables multi-commit mode as the default behavior for all `commiat` commands. Once enabled, you don't need to pass `--multi` to use multi-commit mode; you can disable it per-run with `--no-multi` if needed.
+    ```bash
+    commiat config -m
+    # or
+    commiat config --multi
     ```
 
 Happy committing! 🎉
