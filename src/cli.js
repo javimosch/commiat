@@ -645,21 +645,27 @@ async function mainAction(options) {
     } else {
       const stagedSummary = await git.diffSummary(["--staged"]);
       if (stagedSummary.files.length === 0) {
-        const { shouldStageAll } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "shouldStageAll",
-            message: "No changes staged. Stage all changes now? (git add .)",
-            default: true,
-          },
-        ]);
-        if (shouldStageAll) {
-          console.log("Staging all changes (`git add .`)...");
+        if (options.nonInteractive) {
+          console.log("No changes staged. Auto-staging all changes...");
           await git.add(".");
           console.log("Changes staged.");
         } else {
-          console.log("No changes staged. Aborting.");
-          process.exit(0);
+          const { shouldStageAll } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "shouldStageAll",
+              message: "No changes staged. Stage all changes now? (git add .)",
+              default: true,
+            },
+          ]);
+          if (shouldStageAll) {
+            console.log("Staging all changes (`git add .`)...");
+            await git.add(".");
+            console.log("Changes staged.");
+          } else {
+            console.log("No changes staged. Aborting.");
+            process.exit(0);
+          }
         }
       } else {
         console.log(`${stagedSummary.files.length} file(s) already staged.`);
@@ -1209,6 +1215,7 @@ program
   )
   .option("--multi", "Enable multi-commit mode: group changes into logical commits using AI")
   .option("--untracked", "Include untracked files in multi-commit grouping (they will be staged per group)")
+  .option("--non-interactive", "Disable all prompts and auto-accept generated commit messages")
   .action(mainAction);
 
 program
