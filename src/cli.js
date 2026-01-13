@@ -496,7 +496,12 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
 }
 
 // --- User Interaction ---
-async function promptUser(initialMessage) {
+async function promptUser(initialMessage, nonInteractive = false) {
+  if (nonInteractive) {
+    console.log(`Commit message: "${initialMessage}"`);
+    return initialMessage;
+  }
+  
   let currentMessage = initialMessage;
   while (true) {
     const { action } = await inquirer.prompt([
@@ -726,7 +731,7 @@ async function mainAction(options) {
       messageToPrompt = lines.join("\n");
     }
 
-    const finalCommitMessage = await promptUser(messageToPrompt);
+    const finalCommitMessage = await promptUser(messageToPrompt, options.nonInteractive);
 
     if (finalCommitMessage) {
       const commitOptions = {};
@@ -901,7 +906,7 @@ Return only the JSON response without any explanation or markdown formatting.
             messageToPrompt = lines.join("\n");
           }
           
-          const finalCommitMessage = await promptUser(messageToPrompt);
+          const finalCommitMessage = await promptUser(messageToPrompt, options.nonInteractive);
           
           if (finalCommitMessage) {
             const commitOptions = {};
@@ -966,7 +971,7 @@ Return only the JSON response without any explanation or markdown formatting.
         messageToPrompt = lines.join("\n");
       }
       
-      const finalCommitMessage = await promptUser(messageToPrompt);
+      const finalCommitMessage = await promptUser(messageToPrompt, options.nonInteractive);
       
       if (finalCommitMessage) {
         const commitOptions = {};
