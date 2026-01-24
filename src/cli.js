@@ -19,6 +19,7 @@ const packageJson = require("../package.json");
 
 const git = simpleGit();
 const gitUtils = require("./utils/git");
+const multiCommitUtils = require("./utils/multiCommit");
 
 // --- Constants ---
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -400,6 +401,65 @@ async function callOpenRouterApi(prompt, llmConfig) {
 }
 
 // --- Commit Message Generation (Main Logic) ---
+async function generateLlmText(prompt) {
+  const llmConfig = getLlmProviderConfig();
+  console.log(
+    `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,
+  );
+  try {
+    if (llmConfig.provider === "ollama") {
+      try {
+        return await callOllamaApi(prompt, llmConfig);
+      } catch (ollamaError) {
+        const canFallback = llmConfig.fallbackEnabled && isOpenRouterConfigured();
+        const shouldAttemptFallback =
+          ollamaError.isNetworkError ||
+          (ollamaError.responseStatus &&
+            ollamaError.responseStatus >= 400 &&
+            ollamaError.responseStatus !== 401 &&
+            ollamaError.responseStatus !== 403);
+        if (canFallback && shouldAttemptFallback) {
+          console.warn(
+            `⚠️ Ollama request failed (Status: ${ollamaError.responseStatus || "N/A"}, Message: ${ollamaError.message}). Attempting fallback to OpenRouter...`,
+          );
+          await fsLogError(ollamaError);
+          const globalConfig = loadGlobalConfig();
+          const openRouterModel =
+            process.env[CONFIG_KEY_OPENROUTER_MODEL] ||
+            globalConfig[CONFIG_KEY_OPENROUTER_MODEL] ||
+            DEFAULT_OPENROUTER_MODEL;
+          const openRouterConfig = { provider: "openrouter", model: openRouterModel };
+          return await callOpenRouterApi(prompt, openRouterConfig);
+        }
+        throw ollamaError;
+      }
+    }
+    return await callOpenRouterApi(prompt, llmConfig);
+  } catch (error) {
+    await fsLogError(error);
+    throw new Error(`LLM request failed: ${error.message}`);
+  }
+}
+
+function applyPrefixAffixToMessage(message, options) {
+  let messageToPrompt = String(message || "").trim();
+  if (!messageToPrompt) return messageToPrompt;
+  if (!options?.prefix && !options?.affix) return messageToPrompt;
+
+  const lines = messageToPrompt.split("\n");
+  let firstLine = lines[0] || "";
+
+  if (options.prefix) {
+    firstLine = `${options.prefix}${options.prefix.endsWith(" ") ? "" : " "}${firstLine}`;
+  }
+  if (options.affix) {
+    firstLine = `${firstLine}${options.affix.startsWith(" ") ? "" : " "}${options.affix}`;
+  }
+
+  lines[0] = firstLine;
+  return lines.join("\n");
+}
+
 async function generateCommitMessage(diff, localConfig, systemVarValues) {
   const llmConfig = getLlmProviderConfig();
   console.log(
@@ -710,28 +770,10 @@ async function mainAction(options) {
       systemVarValues,
     );
 
-    // Apply prefix and/or affix if provided
-    let messageToPrompt = initialCommitMessage.trim();
-    if (options.prefix || options.affix) {
-      const lines = messageToPrompt.split("\n");
-      let firstLine = lines[0] || "";
+	      // Apply prefix and/or affix if provided
+	      const messageToPrompt = applyPrefixAffixToMessage(initialCommitMessage, options);
 
-      // Apply prefix to first line
-      if (options.prefix) {
-        firstLine = `${options.prefix}${options.prefix.endsWith(" ") ? "" : " "}${firstLine}`;
-      }
-
-      // Apply affix to first line only
-      if (options.affix) {
-        firstLine = `${firstLine}${options.affix.startsWith(" ") ? "" : " "}${options.affix}`;
-      }
-
-      // Reconstruct the message with modified first line
-      lines[0] = firstLine;
-      messageToPrompt = lines.join("\n");
-    }
-
-    const finalCommitMessage = await promptUser(messageToPrompt, options.nonInteractive);
+	      const finalCommitMessage = await promptUser(messageToPrompt, options.nonInteractive);
 
     if (finalCommitMessage) {
       const commitOptions = {};
@@ -765,177 +807,199 @@ async function mainAction(options) {
 // --- Multi-commit handling ---
 async function handleMultiCommit(options) {
   try {
-    // Get staged and potentially untracked files to process
-    const relevantFiles = await gitUtils.getRelevantFiles(options);
-    if (relevantFiles.length === 0) {
-      console.log("No files to commit.");
-      return;
-    }
+	    if (options.untracked) {
+	      const untracked = await gitUtils.getUntrackedFiles();
+	      if (untracked.length > 0) {
+	        console.log(`Staging ${untracked.length} untracked files for multi-commit...`);
+	        await git.add(untracked);
+	      }
+	    }
 
-    // Get unified diff for all changes
-    const diff = await git.diff(["--staged"]);
-    
-    // If there are untracked files, add them for analysis
-    if (options.untracked) {
-      const untracked = await gitUtils.getUntrackedFiles();
-      if (untracked.length > 0) {
-        console.log(`Staging ${untracked.length} untracked files...`);
-        await git.add(untracked);
-      }
-    }
-    
-    console.log("\nAnalyzing changes to group them logically...");
-    
-    // Ask the LLM to analyze the diff and suggest logical groupings
-    const prompt = `
-You are an expert software engineer analyzing Git changes. Your job is to group changes into logical commits based on the following diff.
+	    const relevantFiles = await gitUtils.getStagedFiles();
+	    if (relevantFiles.length === 0) {
+	      console.log("No files to commit.");
+	      return;
+	    }
 
-IMPORTANT: You MUST separate unrelated changes into different groups. Do NOT group changes together just because they appear in the same diff. Each group should represent a cohesive unit of work.
+	    const diff = await git.diff(["--staged"]);
+	    console.log("\nAnalyzing changes to group them logically...");
 
-The changes include:
+	    const groupingPrompt = `You are an expert software engineer analyzing Git changes.
+
+Your job is to group changes into logical commits based on the following staged diff.
+
+IMPORTANT:
+- You MUST separate unrelated changes into different groups.
+- Do NOT group changes together just because they appear in the same diff.
+- Each group should represent a cohesive unit of work.
+
+Staged diff:
+\n\`\`\`diff
 ${diff}
-    
-Your task:
-1. Carefully analyze each file and its changes to determine logical groupings
-2. SEPARATE unrelated changes (e.g., documentation updates should NOT be grouped with feature implementations)
-3. For each group, describe the nature of the changes (type: feature, fix, chore, docs, etc)
-4. Return a JSON array of objects describing logical groups with:
-   - "group": Name of the group (e.g., "frontend UI enhancements")
-   - "files": Array of file paths belonging to this group
-   - "description": Brief description of the changes included in this group
-   
-If there are multiple unrelated changes, return multiple groups. Prefer more groups over fewer groups.
-    
-Return only the JSON response without any explanation or markdown formatting.
-`;
+\`\`\`\n
+Return a JSON array of objects with:
+- "group": short name for the group
+- "files": array of file paths belonging to this group
+- "description": brief description of changes in this group
 
-    let groupAnalysis;
-    try {
-      const llmConfig = getLlmProviderConfig();
-      groupAnalysis = await generateCommitMessage(prompt, null, {});
-      
-      // Clean up potential markdown formatting from LLM
-      let cleanResponse = groupAnalysis.trim();
-      if (cleanResponse.startsWith("```json")) {
-        cleanResponse = cleanResponse.slice(7);
-      }
-      if (cleanResponse.startsWith("`")) {
-        cleanResponse = cleanResponse.slice(1);
-      }
-      if (cleanResponse.endsWith("```")) {
-        cleanResponse = cleanResponse.slice(0, -3);
-      }
-      if (cleanResponse.endsWith("`")) {
-        cleanResponse = cleanResponse.slice(0, -1);
-      }
-      
-      // Also handle cases where LLM response includes text before JSON
-      const jsonMatch = cleanResponse.match(/\[\s*{.*}\s*\]/s);
-      if (jsonMatch) {
-        cleanResponse = jsonMatch[0];
-      }
-      
-      // Parse the JSON response from LLM
-      const parsedGroups = JSON.parse(cleanResponse);
-      console.log("Successfully parsed group results.");
-      
-      // If groupAnalysis is not an array, wrap it in array
-      const groups = Array.isArray(parsedGroups) ? parsedGroups : [parsedGroups];
-      
-      // Track if all commits were successful
-      let allSuccessful = true;
-      
-      // Process each group
-      for (let i = 0; i < groups.length; i++) {
-        const group = groups[i];
-        console.log(`\nProcessing group ${i+1}: ${group.group}`);
-        console.log(`Files: ${group.files ? group.files.join(', ') : 'None'}`);
-        console.log(`Description: ${group.description || 'None'}`);
-        
-        if (group.files && group.files.length > 0) {
-          // Unstage everything to isolate this group's changes
-          await gitUtils.unstageAll();
+If there are multiple unrelated changes, return multiple groups. Prefer more groups over fewer.
+Return ONLY JSON (no markdown, no explanation).`;
 
-          // Only consider files that are actually part of the current change set
-          const filesInGroup = group.files.filter((f) => relevantFiles.includes(f));
+	    let groupAnalysis;
+	    try {
+	      groupAnalysis = await generateLlmText(groupingPrompt);
+	      const parsedGroups = multiCommitUtils.parseGroupsFromLlmResponse(groupAnalysis);
+	      const { groups: normalizedGroups, warnings } =
+	        multiCommitUtils.normalizeMultiCommitGroups(parsedGroups, relevantFiles);
 
-          if (filesInGroup.length === 0) {
-            console.log("No matching files from this group are part of the current changes. Skipping.");
-            continue;
-          }
+	      warnings.forEach((w) => console.warn(`⚠️ ${w}`));
 
-          // Stage only files in this group
-          await git.add(filesInGroup);
-          
-          // Debug: show which files are currently staged for this group
-          try {
-            const stagedNow = await gitUtils.getStagedFiles();
-            console.log(`Staged for this group: ${stagedNow.join(', ')}`);
-          } catch {}
-          
-          // Generate commit message for this group
-          const groupDiff = await git.diff(["--staged"]); 
-          
-          const localConfig = await localConfigManager.loadConfig();
-          const systemVarValues = await variableProcessor.getSystemVariableValues();
-          
-          const groupCommitMessage = await generateCommitMessage(
-            groupDiff,
-            localConfig,
-            systemVarValues
-          );
-          
-          // Apply prefix and/or affix if provided
-          let messageToPrompt = groupCommitMessage.trim();
-          if (options.prefix || options.affix) {
-            const lines = messageToPrompt.split("\n");
-            let firstLine = lines[0] || "";
-            
-            // Apply prefix to first line
-            if (options.prefix) {
-              firstLine = `${options.prefix}${options.prefix.endsWith(" ") ? "" : " "}${firstLine}`;
-            }
-            
-            // Apply affix to first line only
-            if (options.affix) {
-              firstLine = `${firstLine}${options.affix.startsWith(" ") ? "" : " "}${options.affix}`;
-            }
-            
-            // Reconstruct the message with modified first line
-            lines[0] = firstLine;
-            messageToPrompt = lines.join("\n");
-          }
-          
-          const finalCommitMessage = await promptUser(messageToPrompt, options.nonInteractive);
-          
-          if (finalCommitMessage) {
-            const commitOptions = {};
-            if (options.verify === false) {
-              commitOptions["--no-verify"] = null;
-              console.log("Committing with --no-verify flag...");
-            } else {
-              console.log("Committing...");
-            }
-            
-            await git.commit(finalCommitMessage, undefined, commitOptions);
-            console.log(`✅ Group commit successful!\n`);
-          } else {
-            console.log(`\n❌ Group ${i+1} commit cancelled.`);
-            allSuccessful = false;
-            break;
-          }
-          
-        } else {
-          console.log(`No files found in this group. Skipping.`);
-        }
-      }
-      
-      if (allSuccessful) {
-        console.log(`\n🎉 Multi-commit process completed successfully.`);
-      }
-    } catch (parseError) {
+	      if (normalizedGroups.length === 0) {
+	        throw new Error("No valid groups returned by the model.");
+	      }
+
+	      // Load config once and ensure custom variable descriptions exist
+	      let localConfig = await localConfigManager.loadConfig();
+	      const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
+	      const variablesInFormat = variableProcessor.detectVariables(format);
+	      if (localConfig && variablesInFormat.length > 0 && !options.nonInteractive) {
+	        const configWasUpdated =
+	          await variableProcessor.promptForMissingVariableDescriptions(
+	            variablesInFormat,
+	            localConfig,
+	          );
+	        if (configWasUpdated) {
+	          localConfig = await localConfigManager.loadConfig();
+	        }
+	      }
+	      const systemVarValues = await variableProcessor.getSystemVariableValues();
+
+	      // Pre-generate suggested commit messages for preview and reuse during commit
+	      console.log(`\nGenerating suggested commit messages for ${normalizedGroups.length} group(s)...`);
+	      for (const g of normalizedGroups) {
+	        const groupDiff = await git.diff(["--staged", "--", ...g.files]);
+	        const msg = await generateCommitMessage(groupDiff, localConfig, systemVarValues);
+	        g.suggestedMessage = applyPrefixAffixToMessage(msg, options);
+	      }
+
+	      const printPreview = (groups) => {
+	        console.log("\n--- Planned commits ---");
+	        groups.forEach((g, idx) => {
+	          console.log(`\n#${idx + 1} ${g.group}${g.description ? ` — ${g.description}` : ""}`);
+	          console.log(`Suggested message:\n${g.suggestedMessage}`);
+	          console.log("Files:");
+	          g.files.forEach((f) => console.log(`- ${f}`));
+	        });
+	        console.log("\n----------------------\n");
+	      };
+
+	      const selectGroups = async (groups) => {
+	        const { action } = await inquirer.prompt([
+	          {
+	            type: "list",
+	            name: "action",
+	            message: "What would you like to do?",
+	            choices: [
+	              { name: "✅ Commit all planned groups", value: "all" },
+	              { name: "🧩 Select groups to commit", value: "select" },
+	              { name: "🚪 Leave (discard plan; unstage remaining changes)", value: "leave" },
+	            ],
+	            default: "select",
+	          },
+	        ]);
+
+	        if (action === "leave") return { selectedIndexes: [], leave: true };
+	        if (action === "all") {
+	          return { selectedIndexes: groups.map((_, i) => i), leave: false };
+	        }
+
+	        const { selectedIndexes } = await inquirer.prompt([
+	          {
+	            type: "checkbox",
+	            name: "selectedIndexes",
+	            message: "Select which groups to commit now:",
+	            choices: groups.map((g, i) => ({
+	              name: `#${i + 1} ${g.group} (${g.files.length} files)`,
+	              value: i,
+	              checked: true,
+	            })),
+	          },
+	        ]);
+
+	        return { selectedIndexes: selectedIndexes || [], leave: false };
+	      };
+
+	      const commitOptions = {};
+	      if (options.verify === false) {
+	        commitOptions["--no-verify"] = null;
+	      }
+
+	      let remaining = normalizedGroups.slice();
+	      let allSuccessful = true;
+
+	      while (remaining.length > 0) {
+	        if (options.nonInteractive) {
+	          // Non-interactive keeps the historical behavior: commit sequentially with no selection prompts
+	          for (let i = 0; i < remaining.length; i++) {
+	            const g = remaining[i];
+	            await gitUtils.unstageAll();
+	            await git.add(g.files);
+	            const finalCommitMessage = await promptUser(g.suggestedMessage, true);
+	            await git.commit(finalCommitMessage, undefined, commitOptions);
+	          }
+	          remaining = [];
+	          break;
+	        }
+
+	        printPreview(remaining);
+	        const { selectedIndexes, leave } = await selectGroups(remaining);
+	        if (leave || selectedIndexes.length === 0) {
+	          console.log("Leaving multi-commit session. Unstaging remaining changes...");
+	          await gitUtils.unstageAll();
+	          return;
+	        }
+
+	        // Commit selected groups in original order
+	        const selected = selectedIndexes
+	          .slice()
+	          .sort((a, b) => a - b)
+	          .map((i) => remaining[i])
+	          .filter(Boolean);
+
+	        for (const g of selected) {
+	          console.log(`\nCommitting group: ${g.group}`);
+	          await gitUtils.unstageAll();
+	          await git.add(g.files);
+	
+	          const finalCommitMessage = await promptUser(g.suggestedMessage, false);
+	          if (!finalCommitMessage) {
+	            console.log("\n❌ Commit cancelled. Unstaging remaining changes...");
+	            allSuccessful = false;
+	            await gitUtils.unstageAll();
+	            break;
+	          }
+	
+	          if (options.verify === false) {
+	            console.log("Committing with --no-verify flag...");
+	          } else {
+	            console.log("Committing...");
+	          }
+	          await git.commit(finalCommitMessage, undefined, commitOptions);
+	          console.log("✅ Group commit successful!");
+
+	          // Remove from remaining
+	          remaining = remaining.filter((x) => x !== g);
+	        }
+
+	        if (!allSuccessful) return;
+	      }
+
+	      console.log(`\n🎉 Multi-commit process completed successfully.`);
+	    } catch (parseError) {
       console.warn(`\n⚠️ Failed to parse LLM response as JSON. Falling back to single commit mode.`);
-      console.warn(`LLM Response: ${groupAnalysis}`);
+	      if (groupAnalysis) {
+	        console.warn(`LLM Response: ${groupAnalysis}`);
+	      }
       console.warn(`Error: ${parseError.message}`);
       
       // Fall back to regular commit mode
