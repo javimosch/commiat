@@ -697,7 +697,7 @@ async function mainAction(options) {
 
   console.log("Commiat CLI - Generating commit message...");
   try {
-    let localConfig = await localConfigManager.loadConfig();
+    let localConfig = await localConfigManager.loadConfig(options.nonInteractive);
     const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
     if (!localConfig) {
       console.log(`Using default format: "${format}"`);
@@ -754,7 +754,7 @@ async function mainAction(options) {
           localConfig,
         );
       if (configWasUpdated) {
-        localConfig = await localConfigManager.loadConfig();
+        localConfig = await localConfigManager.loadConfig(options.nonInteractive);
         if (!localConfig) {
           throw new Error(
             `Failed to reload ${localConfigManager.LOCAL_CONFIG_FILENAME} after updating variable descriptions.`,
@@ -858,21 +858,21 @@ Return ONLY JSON (no markdown, no explanation).`;
 	        throw new Error("No valid groups returned by the model.");
 	      }
 
-	      // Load config once and ensure custom variable descriptions exist
-	      let localConfig = await localConfigManager.loadConfig();
-	      const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
-	      const variablesInFormat = variableProcessor.detectVariables(format);
-	      if (localConfig && variablesInFormat.length > 0 && !options.nonInteractive) {
+      // Load config once and ensure custom variable descriptions exist
+      let localConfig = await localConfigManager.loadConfig(options.nonInteractive);
+      const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
+      const variablesInFormat = variableProcessor.detectVariables(format);
+      if (localConfig && variablesInFormat.length > 0 && !options.nonInteractive) {
 	        const configWasUpdated =
 	          await variableProcessor.promptForMissingVariableDescriptions(
 	            variablesInFormat,
 	            localConfig,
 	          );
-	        if (configWasUpdated) {
-	          localConfig = await localConfigManager.loadConfig();
-	        }
-	      }
-	      const systemVarValues = await variableProcessor.getSystemVariableValues();
+        if (configWasUpdated) {
+          localConfig = await localConfigManager.loadConfig(options.nonInteractive);
+        }
+      }
+      const systemVarValues = await variableProcessor.getSystemVariableValues();
 
 	      // Pre-generate suggested commit messages for preview and reuse during commit
 	      console.log(`\nGenerating suggested commit messages for ${normalizedGroups.length} group(s)...`);
@@ -1005,7 +1005,7 @@ Return ONLY JSON (no markdown, no explanation).`;
       // Fall back to regular commit mode
       console.log("Committing all changes in one commit...\n");
       
-      const localConfig = await localConfigManager.loadConfig();
+      const localConfig = await localConfigManager.loadConfig(options.nonInteractive);
       const systemVarValues = await variableProcessor.getSystemVariableValues();
       
       const initialCommitMessage = await generateCommitMessage(

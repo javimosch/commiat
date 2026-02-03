@@ -9,10 +9,11 @@ const DEFAULT_FORMAT = '{type}: {msg}'; // A simpler default if none is provided
 
 /**
  * Loads the local .commiat configuration file.
- * If it doesn't exist, prompts the user to create one.
- * @returns {Promise&lt;object | null&gt;} The loaded config object or null if creation is cancelled.
+ * If it doesn't exist, prompts the user to create one (unless in non-interactive mode).
+ * @param {boolean} nonInteractive - If true, skip all prompts and return null when config is missing.
+ * @returns {Promise&lt;object | null&gt;} The loaded config object or null if creation is cancelled or in non-interactive mode.
  */
-async function loadConfig() {
+async function loadConfig(nonInteractive = false) {
   if (fs.existsSync(LOCAL_CONFIG_PATH)) {
     try {
       const content = fs.readFileSync(LOCAL_CONFIG_PATH, 'utf8');
@@ -31,6 +32,13 @@ async function loadConfig() {
     }
   } else {
     console.log(`Local config file (${LOCAL_CONFIG_FILENAME}) not found.`);
+
+    // In non-interactive mode, don't prompt - just use default format
+    if (nonInteractive) {
+      console.log('Non-interactive mode: using default format.');
+      return null;
+    }
+
     const { shouldCreate } = await inquirer.prompt([
         {
             type: 'confirm',
