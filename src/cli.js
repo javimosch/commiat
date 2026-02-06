@@ -460,6 +460,21 @@ function applyPrefixAffixToMessage(message, options) {
   return lines.join("\n");
 }
 
+function substituteVariablesInMessage(message, systemVarValues) {
+  let result = String(message || "").trim();
+  
+  for (const varName in systemVarValues) {
+    const varValue = systemVarValues[varName];
+    const placeholder = `{${varName}}`;
+    const regex = new RegExp(`\\${placeholder}`, 'g');
+    if (result.includes(placeholder)) {
+      result = result.replace(regex, varValue);
+    }
+  }
+  
+  return result;
+}
+
 async function generateCommitMessage(diff, localConfig, systemVarValues) {
   const llmConfig = getLlmProviderConfig();
   console.log(
@@ -491,12 +506,14 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
     }
   }
   prompt +=
-    "\nGenerate ONLY the commit message string, adhering strictly to the specified format and variable descriptions.";
+    "\nGenerate ONLY the commit message string, adhering strictly to the specified format and variable descriptions";
 
   try {
     if (llmConfig.provider === "ollama") {
       try {
-        return await callOllamaApi(prompt, llmConfig);
+        let message = await callOllamaApi(prompt, llmConfig);
+        message = substituteVariablesInMessage(message, systemVarValues);
+        return message;
       } catch (ollamaError) {
         const canFallback =
           llmConfig.fallbackEnabled && isOpenRouterConfigured();
@@ -520,13 +537,17 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
             provider: "openrouter",
             model: openRouterModel,
           };
-          return await callOpenRouterApi(prompt, openRouterConfig);
+          let message = await callOpenRouterApi(prompt, openRouterConfig);
+          message = substituteVariablesInMessage(message, systemVarValues);
+          return message;
         } else {
           throw ollamaError;
         }
       }
     } else {
-      return await callOpenRouterApi(prompt, llmConfig);
+      let message = await callOpenRouterApi(prompt, llmConfig);
+      message = substituteVariablesInMessage(message, systemVarValues);
+      return message;
     }
   } catch (error) {
     await fsLogError(error);
