@@ -1296,15 +1296,15 @@ program
   .option("-a, --add-all", "Stage all changes (`git add .`) before committing")
   .option("-n, --no-verify", "Bypass git commit hooks")
   .option(
-    "--prefix <string>",
+    "-p, --prefix <string>",
     'Prepend a string to the beginning of the generated commit message (e.g., --prefix "[WIP]")',
   )
   .option(
-    "--affix <string>",
+    "-f, --affix <string>",
     'Append a string to the end of the generated commit message (e.g., --affix "(#45789)")',
   )
-  .option("--multi", "Enable multi-commit mode: group changes into logical commits using AI")
-  .option("--untracked", "Include untracked files in multi-commit grouping (they will be staged per group)")
+  .option("-m, --multi", "Enable multi-commit mode: group changes into logical commits using AI")
+  .option("-u, --untracked", "Include untracked files in multi-commit grouping (they will be staged per group)")
   .option("--non-interactive", "Disable all prompts and auto-accept generated commit messages")
   .action(mainAction);
 

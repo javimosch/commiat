@@ -4,7 +4,8 @@
   "description": "Tired of writing git commit messages? Let AI do it for you! ✨",
   "main": "index.js",
   "bin": {
-    "commiat": "src/cli.js"
+    "commiat": "src/cli.js",
+    "cm": "src/cli.js"
   },
   "scripts": {
     "test": "node --test"
