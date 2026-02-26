@@ -23,7 +23,8 @@ const multiCommitUtils = require("./utils/multiCommit");
 
 // --- Constants ---
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash-lite";
+// Default OpenRouter model switched to liquid/lfm-2-24b-a2b for improved accuracy and open-weights support
+const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
 const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "llama3";
 const DEFAULT_CONVENTIONAL_FORMAT = "{type}: {msg}";
@@ -1363,7 +1364,7 @@ program
 
 program
   .command("model select")
-  .description("Select an OpenRouter model using autocomplete search. Recommended: google/gemini-2.5-flash-lite")
+  .description("Select an OpenRouter model using autocomplete search. Recommended: openrouter/free")
   .action(selectModel);
 
 program.parse(process.argv);
