@@ -24,7 +24,7 @@ const multiCommitUtils = require("./utils/multiCommit");
 // --- Constants ---
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 // Default OpenRouter model switched to liquid/lfm-2-24b-a2b for improved accuracy and open-weights support
-const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
+const DEFAULT_OPENROUTER_MODEL = "xiaomi/mimo-v2-flash";
 const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "llama3";
 const DEFAULT_CONVENTIONAL_FORMAT = "{type}: {msg}";
@@ -1364,7 +1364,7 @@ program
 
 program
   .command("model select")
-  .description("Select an OpenRouter model using autocomplete search. Recommended: openrouter/free")
+  .description("Select an OpenRouter model using autocomplete search. Recommended: xiaomi/mimo-v2-flash")
   .action(selectModel);
 
 program.parse(process.argv);
