@@ -1,0 +1,35 @@
+{
+  "name": "commiat",
+  "version": "0.1.0",
+  "description": "Wrap commiat CLI with passthrough support",
+  "source": "https://www.npmjs.com/package/commiat",
+  "checks": [
+    { "type": "binary", "name": "commiat" }
+  ],
+  "commands": [
+    {
+      "namespace": "commiat",
+      "resource": "install",
+      "action": "steps",
+      "description": "Show commiat installation steps for LLM automation",
+      "adapter": "builtin",
+      "adapterConfig": { "builtin": "commiat_install_steps" },
+      "args": []
+    },
+    {
+      "namespace": "commiat",
+      "resource": "_",
+      "action": "_",
+      "description": "Passthrough to commiat CLI",
+      "adapter": "process",
+      "adapterConfig": {
+        "command": "commiat",
+        "passthrough": true,
+        "parseJson": true,
+        "timeout_ms": 15000,
+        "missingDependencyHelp": "Run: dcli commiat install steps"
+      },
+      "args": []
+    }
+  ]
+}
