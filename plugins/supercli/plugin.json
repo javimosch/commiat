@@ -23,7 +23,8 @@
       "description": "Passthrough to commiat CLI",
       "adapter": "process",
       "adapterConfig": {
-        "command": "commiat",
+        "command": "cm",
+        "nonTtyBaseArgs": ["--non-interactive"],
         "passthrough": true,
         "parseJson": true,
         "timeout_ms": 15000,
