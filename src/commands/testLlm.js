@@ -1,5 +1,5 @@
 const { getLlmProviderConfig } = require("../core/providerConfig");
-const { callOllamaApi, callOpenRouterApi } = require("../core/llm");
+const { callOllamaApi, callOpenRouterApi, formatOpenRouterErrorForCli } = require("../core/llm");
 const { fsLogError } = require("../core/globalStore");
 const { isOpenRouterConfigured } = require("../core/apiKey");
 const {
@@ -74,10 +74,19 @@ async function testLlmCompletion() {
     } else if (error.provider === "openrouter") {
       if (error.isAuthenticationError) {
         console.error("OpenRouter authentication failed. Check your API key.");
+      } else if (error.isRateLimitError) {
+        console.error(formatOpenRouterErrorForCli(error));
+        console.error("Rate limit reached. Retry in a moment or switch model.");
+      } else if (error.isModelNotFoundError) {
+        console.error(formatOpenRouterErrorForCli(error));
+        console.error("Configured model may be unavailable. Run 'commiat model-select' to pick another.");
+      } else if (error.isContextLimitError) {
+        console.error(formatOpenRouterErrorForCli(error));
+        console.error("Prompt exceeded model context limits after retries.");
+      } else if (error.isNetworkError) {
+        console.error(formatOpenRouterErrorForCli(error));
       } else {
-        console.error(
-          `OpenRouter request failed (Status: ${error.responseStatus || "N/A"}). Check OpenRouter status or your network.`,
-        );
+        console.error(formatOpenRouterErrorForCli(error));
       }
     }
     process.exit(1);

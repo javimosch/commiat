@@ -14,6 +14,67 @@ const {
   middleOutCompress,
 } = require("./promptSizing");
 
+function normalizeErrorText(value) {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+function extractOpenRouterProviderMessage(error) {
+  const data = error?.response?.data;
+
+  const fromErrorsArray = Array.isArray(data?.errors)
+    ? data.errors
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (item && typeof item === "object") {
+            return item.message || item.detail || item.title || "";
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join("; ")
+    : "";
+
+  const candidates = [
+    data?.error?.message,
+    data?.error?.detail,
+    data?.message,
+    data?.detail,
+    fromErrorsArray,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeErrorText(candidate);
+    if (normalized) return normalized;
+  }
+
+  return "";
+}
+
+function extractOpenRouterRequestId(error) {
+  const headers = error?.response?.headers || {};
+  const data = error?.response?.data;
+  return (
+    headers["x-request-id"] ||
+    headers["x-openrouter-request-id"] ||
+    data?.request_id ||
+    data?.id ||
+    null
+  );
+}
+
+function formatOpenRouterErrorForCli(error) {
+  const statusPart = error?.responseStatus ? ` (Status: ${error.responseStatus})` : "";
+  const detail = normalizeErrorText(error?.providerMessage || error?.message);
+  const requestIdPart = error?.requestId ? ` [request_id: ${error.requestId}]` : "";
+
+  if (detail) {
+    return `OpenRouter request failed${statusPart}: ${detail}${requestIdPart}`;
+  }
+
+  return `OpenRouter request failed${statusPart}${requestIdPart}`;
+}
+
 async function callOllamaApi(prompt, llmConfig) {
   const ollamaUrl = `${llmConfig.baseUrl}/api/chat`;
   console.log(`Sending request to Ollama: ${ollamaUrl}`);
@@ -74,13 +135,27 @@ async function callOpenRouterApi(prompt, llmConfig) {
     }
     throw new Error("Invalid OpenRouter API response structure.");
   } catch (error) {
-    const enhancedError = new Error(error.message || "OpenRouter API request failed");
+    const responseStatus = error.response?.status;
+    const responseData = error.response?.data;
+    const providerMessage = extractOpenRouterProviderMessage(error);
+    const fallbackMessage = normalizeErrorText(error.message) || "OpenRouter API request failed";
+
+    const enhancedError = new Error(providerMessage || fallbackMessage);
     enhancedError.stack = error.stack;
     enhancedError.provider = "openrouter";
     enhancedError.requestUrl = OPENROUTER_API_URL;
-    enhancedError.responseStatus = error.response?.status;
-    enhancedError.responseData = error.response?.data;
-    enhancedError.isAuthenticationError = error.response?.status === 401;
+    enhancedError.responseStatus = responseStatus;
+    enhancedError.responseData = responseData;
+    enhancedError.providerMessage = providerMessage || null;
+    enhancedError.providerCode =
+      responseData?.error?.code || responseData?.error?.type || responseData?.code || null;
+    enhancedError.requestId = extractOpenRouterRequestId(error);
+    enhancedError.isAuthenticationError = responseStatus === 401 || responseStatus === 403;
+    enhancedError.isRateLimitError = responseStatus === 429;
+    enhancedError.isModelNotFoundError =
+      responseStatus === 404 && /model|not found/i.test(providerMessage || fallbackMessage);
+    enhancedError.isNetworkError = !!error.request && !error.response;
+    enhancedError.isContextLimitError = isLikelyContextLimitError(enhancedError);
     throw enhancedError;
   }
 }
@@ -172,6 +247,7 @@ module.exports = {
   callOllamaApi,
   callOpenRouterApi,
   callOpenRouterWithPromptSizing,
+  formatOpenRouterErrorForCli,
   generateLlmText,
   isLikelyContextLimitError,
 };
