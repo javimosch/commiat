@@ -41,6 +41,9 @@ program
   )
   .option("--non-interactive", "Disable all prompts and auto-accept generated commit messages")
   .action(async (options) => {
+    if (!process.stdout.isTTY) {
+      options.nonInteractive = true;
+    }
     try {
       await mainAction(options);
     } catch {
