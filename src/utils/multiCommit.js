@@ -36,7 +36,19 @@ function extractFirstJsonArray(text) {
 function parseGroupsFromLlmResponse(llmText) {
   const cleaned = stripMarkdownCodeFences(String(llmText ?? ""));
   const jsonCandidate = extractFirstJsonArray(cleaned) || cleaned;
-  const parsed = JSON.parse(jsonCandidate);
+  if (!jsonCandidate || jsonCandidate.trim() === "") {
+    throw new Error(
+      "LLM response was empty or contained no JSON array. Raw response: " + JSON.stringify(llmText),
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonCandidate);
+  } catch (parseError) {
+    throw new Error(
+      `LLM returned invalid JSON. Raw response: ${JSON.stringify(llmText)}. Parse error: ${parseError.message}`,
+    );
+  }
   if (Array.isArray(parsed)) return parsed;
   return [parsed];
 }
