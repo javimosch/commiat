@@ -30,6 +30,27 @@ test("parseGroupsFromLlmResponse extracts first JSON array from surrounding text
   assert.equal(groups[0].group, "A");
 });
 
+test("parseGroupsFromLlmResponse throws on empty string", () => {
+  assert.throws(
+    () => parseGroupsFromLlmResponse(""),
+    { message: /empty or contained no JSON array/ },
+  );
+});
+
+test("parseGroupsFromLlmResponse throws on non-JSON response", () => {
+  assert.throws(
+    () => parseGroupsFromLlmResponse("This is just plain text from the LLM"),
+    { message: /invalid JSON/ },
+  );
+});
+
+test("parseGroupsFromLlmResponse throws on null input", () => {
+  assert.throws(
+    () => parseGroupsFromLlmResponse(null),
+    { message: /empty or contained no JSON array/ },
+  );
+});
+
 test("normalizeMultiCommitGroups filters to relevant files, first-group-wins overlaps, and adds unassigned", () => {
   const relevant = ["a.js", "b.js", "c.js"];
   const raw = [
