@@ -114,3 +114,18 @@ test("validateConfig returns true when variable description is a non-empty strin
   const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: "The affected module" } });
   assert.equal(result, true);
 });
+
+test("saveConfig throws for invalid config", async () => {
+  await assert.rejects(
+    async () => { await saveConfig({ format: "", variables: {} }); },
+    { message: /Invalid config object/ }
+  );
+  await assert.rejects(
+    async () => { await saveConfig({ variables: {} }); },
+    { message: /Invalid config object/ }
+  );
+  await assert.rejects(
+    async () => { await saveConfig(null); },
+    { message: /Invalid config object/ }
+  );
+});

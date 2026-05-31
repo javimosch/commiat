@@ -3,7 +3,9 @@ const path = require('path');
 const inquirer = require('inquirer');
 
 const LOCAL_CONFIG_FILENAME = '.commiat';
-const LOCAL_CONFIG_PATH = path.join(process.cwd(), LOCAL_CONFIG_FILENAME);
+function getLocalConfigPath() {
+  return path.join(process.cwd(), LOCAL_CONFIG_FILENAME);
+}
 
 const DEFAULT_FORMAT = '{type}: {msg}'; // A simpler default if none is provided
 
@@ -14,9 +16,10 @@ const DEFAULT_FORMAT = '{type}: {msg}'; // A simpler default if none is provided
  * @returns {Promise&lt;object | null&gt;} The loaded config object or null if creation is cancelled or in non-interactive mode.
  */
 async function loadConfig(nonInteractive = false) {
-  if (fs.existsSync(LOCAL_CONFIG_PATH)) {
+  const configPath = getLocalConfigPath();
+  if (fs.existsSync(configPath)) {
     try {
-      const content = fs.readFileSync(LOCAL_CONFIG_PATH, 'utf8');
+      const content = fs.readFileSync(configPath, 'utf8');
       const config = JSON.parse(content);
       if (!validateConfig(config)) {
         console.error(`❌ Invalid config in ${LOCAL_CONFIG_FILENAME}. Expected { "format": "non-empty string", "variables": {...} }.`);
@@ -84,9 +87,15 @@ async function loadConfig(nonInteractive = false) {
  * @returns {Promise&lt;void&gt;}
  */
 async function saveConfig(config) {
+  if (!validateConfig(config)) {
+    throw new Error(
+      `Invalid config object: expected { "format": "non-empty string", "variables": {...} }.`
+    );
+  }
+  const configPath = getLocalConfigPath();
   try {
     const content = JSON.stringify(config, null, 2); // Pretty print JSON
-    fs.writeFileSync(LOCAL_CONFIG_PATH, content, 'utf8');
+    fs.writeFileSync(configPath, content, 'utf8');
   } catch (error) {
     console.error(`❌ Error writing ${LOCAL_CONFIG_FILENAME}:`, error.message);
     throw error; // Re-throw to indicate failure
@@ -115,5 +124,5 @@ module.exports = {
   saveConfig,
   validateConfig,
   LOCAL_CONFIG_FILENAME,
-  LOCAL_CONFIG_PATH,
+  getLocalConfigPath,
 };
