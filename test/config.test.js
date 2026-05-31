@@ -84,3 +84,33 @@ test("validateConfig returns false for non-object config", () => {
   const result = validateConfig("invalid");
   assert.equal(result, false);
 });
+
+test("validateConfig returns false for array config", () => {
+  const result = validateConfig(["a", "b"]);
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for array variables", () => {
+  const result = validateConfig({ format: "{type}: {msg}", variables: ["some", "array"] });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false when variable description is a number", () => {
+  const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: 123 } });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false when variable description is empty string", () => {
+  const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: "" } });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false when variable description is an object", () => {
+  const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: { level: "detailed" } } });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns true when variable description is a non-empty string", () => {
+  const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: "The affected module" } });
+  assert.equal(result, true);
+});

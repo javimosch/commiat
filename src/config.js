@@ -100,10 +100,12 @@ async function saveConfig(config) {
  * @returns {boolean} True if valid, false otherwise.
  */
 function validateConfig(config) {
-    if (!config || typeof config !== 'object') return false;
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return false;
     if (typeof config.format !== 'string' || config.format.trim() === '') return false;
-    if (typeof config.variables !== 'object' || config.variables === null) return false;
-    // Could add more checks here, e.g., variable name format
+    if (typeof config.variables !== 'object' || config.variables === null || Array.isArray(config.variables)) return false;
+    for (const key in config.variables) {
+        if (typeof config.variables[key] !== 'string' || config.variables[key].trim() === '') return false;
+    }
     return true;
 }
 
