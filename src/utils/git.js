@@ -18,9 +18,10 @@ function extractNumberFromString(branchName) {
  * @returns {Promise<string>} The current branch name.
  * @throws {Error} If not in a git repository or branch cannot be determined.
  */
-async function getGitBranch() {
+async function getGitBranch(gitInstance) {
+  const g = gitInstance || git;
   try {
-    const status = await git.status();
+    const status = await g.status();
     if (!status.current) {
         console.warn('⚠️ Could not automatically determine current git branch name.');
         return ''; // Return empty string if branch cannot be determined
@@ -41,9 +42,9 @@ async function getGitBranch() {
  * Extracts the first sequence of digits found in the branch name.
  * @returns {Promise<string>} The extracted number, or empty string if no number found or error.
  */
-async function getGitBranchNumber() {
+async function getGitBranchNumber(gitInstance) {
     try {
-        const branchName = await getGitBranch();
+        const branchName = await getGitBranch(gitInstance);
         const branchNumber = extractNumberFromString(branchName);
         if (branchNumber) {
             console.log(`Extracted branch number: ${branchNumber}`);
