@@ -73,3 +73,17 @@ test("fsLogError appends structured log", () => {
     delete process.env.GLOBAL_CONFIG_DIR;
   });
 });
+
+test("fsLogError never throws even when logging fails", async () => {
+  const origDir = process.env.GLOBAL_CONFIG_DIR;
+  process.env.GLOBAL_CONFIG_DIR = "/nonexistent/commiat-test";
+  try {
+    const err = new Error("test error");
+    err.responseData = { circular: null };
+    // Should not throw despite nonexistent directory
+    await fsLogError(err);
+    assert.ok(true, "fsLogError must not throw on failure");
+  } finally {
+    process.env.GLOBAL_CONFIG_DIR = origDir;
+  }
+});

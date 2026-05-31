@@ -103,18 +103,23 @@ function updateState(key, value) {
 }
 
 async function fsLogError(error) {
-  const errorLogPath = path.join(GLOBAL_CONFIG_DIR, "error.log");
-  ensureGlobalConfigDirExists();
-  const stack = error.stack ? `\n${error.stack}` : "";
-  const providerInfo = error.provider ? `\nProvider: ${error.provider}` : "";
-  const requestUrlInfo = error.requestUrl ? `\nRequest URL: ${error.requestUrl}` : "";
-  const responseStatusInfo = error.responseStatus ? `\nResponse Status: ${error.responseStatus}` : "";
-  const responseDataInfo = error.responseData
-    ? `\nResponse Data: ${JSON.stringify(error.responseData)}`
-    : "";
+  try {
+    const errorLogPath = path.join(GLOBAL_CONFIG_DIR, "error.log");
+    ensureGlobalConfigDirExists();
+    const stack = error.stack ? `\n${error.stack}` : "";
+    const providerInfo = error.provider ? `\nProvider: ${error.provider}` : "";
+    const requestUrlInfo = error.requestUrl ? `\nRequest URL: ${error.requestUrl}` : "";
+    const responseStatusInfo = error.responseStatus ? `\nResponse Status: ${error.responseStatus}` : "";
+    const responseDataInfo = error.responseData
+      ? `\nResponse Data: ${JSON.stringify(error.responseData)}`
+      : "";
 
-  const logMessage = `[${new Date().toISOString()}] ${error.message}${providerInfo}${requestUrlInfo}${responseStatusInfo}${responseDataInfo}${stack}\n\n`;
-  fs.writeFileSync(errorLogPath, logMessage, { flag: "a" });
+    const logMessage = `[${new Date().toISOString()}] ${error.message}${providerInfo}${requestUrlInfo}${responseStatusInfo}${responseDataInfo}${stack}\n\n`;
+    fs.writeFileSync(errorLogPath, logMessage, { flag: "a" });
+  } catch {
+    // Log failure must never propagate — it may mask the original error
+    // that triggered the log. Silently discard.
+  }
 }
 
 module.exports = {

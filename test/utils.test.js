@@ -38,10 +38,17 @@ test("getGitBranchNumber returns number when branch starts with digits", async (
   }
 });
 
+test("getGitBranch returns empty string when status.current is empty", async () => {
+  const mockGit = {
+    status: async () => ({ current: "" }),
+  };
+  const branch = await getGitBranch(mockGit);
+  assert.equal(branch, "");
+});
+
 test("getGitBranchNumber returns empty string when no leading digits", async () => {
   const mockGit = {
-    status: async () => ({ current: "feature-123" }),
-    getGitBranch: async () => "feature-123",
+    status: async () => ({ current: "no-number-here" }),
   };
   const originalLog = console.log;
   console.log = () => {};
