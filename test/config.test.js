@@ -4,7 +4,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const { loadConfig, saveConfig } = require("../src/config");
+const { loadConfig, saveConfig, validateConfig } = require("../src/config");
 
 function withTempDir(fn) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "commiat-test-"));
@@ -48,4 +48,39 @@ test("saveConfig writes JSON file", () => {
     assert.equal(parsed.format, "custom");
     assert.equal(parsed.variables.comp, "component");
   });
+});
+
+test("validateConfig returns true for valid config", () => {
+  const result = validateConfig({ format: "{type}: {msg}", variables: {} });
+  assert.equal(result, true);
+});
+
+test("validateConfig returns false for missing format", () => {
+  const result = validateConfig({ variables: {} });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for missing variables", () => {
+  const result = validateConfig({ format: "{type}: {msg}" });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for empty format string", () => {
+  const result = validateConfig({ format: "", variables: {} });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for null variables", () => {
+  const result = validateConfig({ format: "{type}: {msg}", variables: null });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for null config", () => {
+  const result = validateConfig(null);
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for non-object config", () => {
+  const result = validateConfig("invalid");
+  assert.equal(result, false);
 });

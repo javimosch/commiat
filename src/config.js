@@ -18,11 +18,9 @@ async function loadConfig(nonInteractive = false) {
     try {
       const content = fs.readFileSync(LOCAL_CONFIG_PATH, 'utf8');
       const config = JSON.parse(content);
-      // Basic validation (can be expanded)
-      if (typeof config.format !== 'string' || typeof config.variables !== 'object') {
-        console.error(`❌ Invalid format in ${LOCAL_CONFIG_FILENAME}. Expected { "format": "...", "variables": {...} }.`);
-        // Optionally: Offer to reset or fix
-        return null; // Or throw an error
+      if (!validateConfig(config)) {
+        console.error(`❌ Invalid config in ${LOCAL_CONFIG_FILENAME}. Expected { "format": "non-empty string", "variables": {...} }.`);
+        return null;
       }
       console.log(`Loaded format from ${LOCAL_CONFIG_FILENAME}`);
       return config;
