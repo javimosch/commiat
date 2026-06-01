@@ -63,7 +63,8 @@ async function getStagedFiles(gitInstance) {
   const g = gitInstance || git;
   try {
     const summary = await g.diffSummary(["--staged"]);
-    return summary.files.map(f => f.file);
+    if (!summary || !Array.isArray(summary.files)) return [];
+    return summary.files.map(f => f.file).filter(Boolean);
   } catch {
     return [];
   }
@@ -72,6 +73,7 @@ async function getStagedFiles(gitInstance) {
 async function getUntrackedFiles() {
   try {
     const output = await git.raw(["ls-files", "--others", "--exclude-standard"]);
+    if (!output || typeof output !== "string" || output.trim().length === 0) return [];
     return output.trim().split('\n').filter(f => f.length > 0);
   } catch {
     return [];
@@ -101,7 +103,12 @@ async function unstageAll() {
 }
 
 async function getFileStatus() {
-  return await git.status();
+  try {
+    const status = await git.status();
+    return status || {};
+  } catch {
+    return {};
+  }
 }
 
 module.exports = {

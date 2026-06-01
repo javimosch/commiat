@@ -1,6 +1,10 @@
 const inquirer = require("inquirer");
 
 async function promptUser(initialMessage, nonInteractive = false) {
+  if (!initialMessage || typeof initialMessage !== "string") {
+    console.error("No commit message to prompt.");
+    return null;
+  }
   if (nonInteractive) {
     console.log(`Commit message: "${initialMessage}"`);
     return initialMessage;
