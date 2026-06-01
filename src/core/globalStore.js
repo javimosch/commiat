@@ -52,12 +52,13 @@ function saveGlobalConfig(configObj) {
   ensureGlobalConfigDirExists();
   let fileContent = "";
   for (const key in configObj) {
-    if (Object.hasOwnProperty.call(configObj, key)) {
+    if (Object.prototype.hasOwnProperty.call(configObj, key)) {
       const value = configObj[key];
+      if (value == null) continue;
       const formattedValue =
-        typeof value === "boolean" && value === true
+        value === true
           ? "true"
-          : typeof value === "boolean" && value === false
+          : value === false
             ? "false"
             : /\s|#|"|'|=/.test(String(value))
               ? `"${String(value).replace(/"/g, '\\"')}"`
@@ -73,6 +74,10 @@ function saveGlobalConfig(configObj) {
 }
 
 function updateGlobalConfig(key, value) {
+  if (!key || typeof key !== "string") {
+    console.error("Invalid key provided to updateGlobalConfig");
+    return;
+  }
   const currentConfig = loadGlobalConfig();
   currentConfig[key] = value;
   saveGlobalConfig(currentConfig);
@@ -103,9 +108,10 @@ function saveState(stateObj) {
   ensureGlobalConfigDirExists();
   let fileContent = "";
   for (const key in stateObj) {
-    if (Object.hasOwnProperty.call(stateObj, key)) {
+    if (Object.prototype.hasOwnProperty.call(stateObj, key)) {
       const value = stateObj[key];
-      fileContent += `${key}=${value}\n`;
+      if (value == null) continue;
+      fileContent += `${key}=${String(value)}\n`;
     }
   }
   try {
@@ -116,6 +122,10 @@ function saveState(stateObj) {
 }
 
 function updateState(key, value) {
+  if (!key || typeof key !== "string") {
+    console.error("Invalid key provided to updateState");
+    return;
+  }
   const currentState = loadState();
   currentState[key] = value;
   saveState(currentState);
