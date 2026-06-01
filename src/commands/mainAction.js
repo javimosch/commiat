@@ -78,6 +78,7 @@ async function mainAction(options) {
       const configWasUpdated = await variableProcessor.promptForMissingVariableDescriptions(
         variablesInFormat,
         localConfig,
+        options.nonInteractive,
       );
       if (configWasUpdated) {
         localConfig = await localConfigManager.loadConfig(options.nonInteractive);
@@ -94,6 +95,7 @@ async function mainAction(options) {
       diff,
       localConfig,
       systemVarValues,
+      options.nonInteractive,
     );
 
     const messageToPrompt = applyPrefixAffixToMessage(initialCommitMessage, options);

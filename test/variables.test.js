@@ -1,7 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { detectVariables } = require("../src/variables");
+const {
+  detectVariables,
+  promptForMissingVariableDescriptions,
+} = require("../src/variables");
 
 test("detectVariables finds placeholders in format", () => {
   assert.deepEqual(detectVariables("{type}: {msg}"), ["type"]);
@@ -28,4 +31,11 @@ test("detectVariables returns empty array for number input", () => {
 
 test("detectVariables returns empty array for object input", () => {
   assert.deepEqual(detectVariables({}), []);
+});
+
+test("promptForMissingVariableDescriptions skips prompts in non-interactive mode", async () => {
+  const config = { format: "feat({scope}): {msg}", variables: {} };
+  const result = await promptForMissingVariableDescriptions(["scope"], config, true);
+  assert.equal(result, false);
+  assert.equal(config.variables.scope, undefined);
 });

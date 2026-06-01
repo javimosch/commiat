@@ -68,7 +68,7 @@ async function handleMultiCommit(options) {
 
     try {
       const groupingPrompt = buildGroupingPrompt(diff);
-      groupAnalysis = await generateLlmText(groupingPrompt, llmConfig, true);
+      groupAnalysis = await generateLlmText(groupingPrompt, llmConfig, true, options.nonInteractive);
       const parsedGroups = multiCommitUtils.parseGroupsFromLlmResponse(groupAnalysis);
       const { groups, warnings } = multiCommitUtils.normalizeMultiCommitGroups(
         parsedGroups,
@@ -110,10 +110,11 @@ async function handleMultiCommit(options) {
     let localConfig = await localConfigManager.loadConfig(options.nonInteractive);
     const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
     const variablesInFormat = variableProcessor.detectVariables(format);
-    if (localConfig && variablesInFormat.length > 0 && !options.nonInteractive) {
+    if (localConfig && variablesInFormat.length > 0) {
       const configWasUpdated = await variableProcessor.promptForMissingVariableDescriptions(
         variablesInFormat,
         localConfig,
+        options.nonInteractive,
       );
       if (configWasUpdated) {
         localConfig = await localConfigManager.loadConfig(options.nonInteractive);
@@ -126,7 +127,7 @@ async function handleMultiCommit(options) {
     );
     for (const g of normalizedGroups) {
       const groupDiff = await git.diff(["--staged", "--", ...g.files]);
-      const msg = await generateCommitMessage(groupDiff, localConfig, systemVarValues);
+      const msg = await generateCommitMessage(groupDiff, localConfig, systemVarValues, options.nonInteractive);
       g.suggestedMessage = applyPrefixAffixToMessage(msg, options);
     }
 
@@ -187,12 +188,15 @@ async function handleMultiCommit(options) {
 
     while (remaining.length > 0) {
       if (options.nonInteractive) {
+        printPreview(remaining);
         for (let i = 0; i < remaining.length; i++) {
           const g = remaining[i];
+          console.log(`\nCommitting group: ${g.group}`);
           await gitUtils.unstageAll();
           await git.add(g.files);
           const finalCommitMessage = await promptUser(g.suggestedMessage, true);
           await git.commit(finalCommitMessage, undefined, commitOptions);
+          console.log("✅ Group commit successful!");
         }
         remaining = [];
         break;
