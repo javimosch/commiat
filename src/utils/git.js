@@ -59,9 +59,14 @@ async function getGitBranchNumber(gitInstance) {
     }
 }
 
-async function getStagedFiles() {
-  const summary = await git.diffSummary(["--staged"]);
-  return summary.files.map(f => f.file);
+async function getStagedFiles(gitInstance) {
+  const g = gitInstance || git;
+  try {
+    const summary = await g.diffSummary(["--staged"]);
+    return summary.files.map(f => f.file);
+  } catch {
+    return [];
+  }
 }
 
 async function getUntrackedFiles() {
@@ -82,9 +87,10 @@ async function getRelevantFiles(options) {
   return files;
 }
 
-async function stageFiles(files) {
-  if (files.length === 0) return;
-  await git.add(files);
+async function stageFiles(files, gitInstance) {
+  if (!Array.isArray(files) || files.length === 0) return;
+  const g = gitInstance || git;
+  await g.add(files);
 }
 
 async function unstageAll() {

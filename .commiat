@@ -1,6 +1,4 @@
 {
-  "format": "custom",
-  "variables": {
-    "comp": "component"
-  }
+  "format": "{type}: {msg}",
+  "variables": {}
 }
