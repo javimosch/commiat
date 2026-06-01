@@ -14,6 +14,16 @@ const {
   middleOutCompress,
 } = require("./promptSizing");
 
+function isValidUrl(str) {
+  if (!str || typeof str !== "string") return false;
+  try {
+    const url = new URL(str);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function normalizeErrorText(value) {
   if (typeof value !== "string") return "";
   return value.trim();
@@ -76,7 +86,17 @@ function formatOpenRouterErrorForCli(error) {
 }
 
 async function callOllamaApi(prompt, llmConfig) {
-  const ollamaUrl = `${llmConfig.baseUrl}/api/chat`;
+  if (!llmConfig || typeof llmConfig !== "object") {
+    throw new Error("Invalid Ollama configuration: llmConfig is required.");
+  }
+  if (!llmConfig.baseUrl || typeof llmConfig.baseUrl !== "string") {
+    throw new Error("Invalid Ollama configuration: baseUrl must be a non-empty string.");
+  }
+  const baseUrl = llmConfig.baseUrl.replace(/\/+$/, "");
+  if (!isValidUrl(baseUrl)) {
+    throw new Error(`Invalid Ollama base URL: "${baseUrl}". Must be a valid http(s) URL.`);
+  }
+  const ollamaUrl = `${baseUrl}/api/chat`;
   console.log(`Sending request to Ollama: ${ollamaUrl}`);
   try {
     const response = await axios.post(
@@ -108,6 +128,15 @@ async function callOllamaApi(prompt, llmConfig) {
 }
 
 async function callOpenRouterApi(prompt, llmConfig) {
+  if (!llmConfig || typeof llmConfig !== "object") {
+    throw new Error("Invalid OpenRouter configuration: llmConfig is required.");
+  }
+  if (!llmConfig.model || typeof llmConfig.model !== "string") {
+    throw new Error("Invalid OpenRouter configuration: model must be a non-empty string.");
+  }
+  if (!isValidUrl(OPENROUTER_API_URL)) {
+    throw new Error(`Invalid OpenRouter API URL configured: "${OPENROUTER_API_URL}".`);
+  }
   const apiKey = await getApiKey();
   if (!apiKey) {
     throw new Error("Could not obtain OpenRouter API key.");
@@ -193,6 +222,15 @@ async function callOpenRouterWithPromptSizing(prompt, llmConfig) {
 }
 
 async function generateLlmText(prompt, llmConfig, allowPromptSizing = false) {
+  if (!llmConfig || typeof llmConfig !== "object") {
+    throw new Error("Invalid LLM configuration: llmConfig is required.");
+  }
+  if (!llmConfig.provider || typeof llmConfig.provider !== "string") {
+    throw new Error("Invalid LLM configuration: provider must be a non-empty string.");
+  }
+  if (typeof prompt !== "string" || prompt.trim().length === 0) {
+    throw new Error("LLM prompt must be a non-empty string.");
+  }
   console.log(
     `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,
   );

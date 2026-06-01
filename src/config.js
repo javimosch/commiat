@@ -17,67 +17,75 @@ const DEFAULT_FORMAT = '{type}: {msg}'; // A simpler default if none is provided
  */
 async function loadConfig(nonInteractive = false) {
   const configPath = getLocalConfigPath();
-  if (fs.existsSync(configPath)) {
-    try {
-      const content = fs.readFileSync(configPath, 'utf8');
-      const config = JSON.parse(content);
-      if (!validateConfig(config)) {
-        console.error(`❌ Invalid config in ${LOCAL_CONFIG_FILENAME}. Expected { "format": "non-empty string", "variables": {...} }.`);
+  try {
+    if (!fs.existsSync(configPath)) {
+      console.log(`Local config file (${LOCAL_CONFIG_FILENAME}) not found.`);
+
+      if (nonInteractive) {
+        console.log('Non-interactive mode: using default format.');
         return null;
       }
-      console.log(`Loaded format from ${LOCAL_CONFIG_FILENAME}`);
-      return config;
-    } catch (error) {
-      console.error(`❌ Error reading or parsing ${LOCAL_CONFIG_FILENAME}:`, error.message);
-      return null; // Indicate error
-    }
-  } else {
-    console.log(`Local config file (${LOCAL_CONFIG_FILENAME}) not found.`);
 
-    // In non-interactive mode, don't prompt - just use default format
-    if (nonInteractive) {
-      console.log('Non-interactive mode: using default format.');
-      return null;
-    }
-
-    const { shouldCreate } = await inquirer.prompt([
+      const { shouldCreate } = await inquirer.prompt([
         {
-            type: 'confirm',
-            name: 'shouldCreate',
-            message: `No ${LOCAL_CONFIG_FILENAME} found. Would you like to create one now?`,
-            default: true,
-        }
-    ]);
+          type: 'confirm',
+          name: 'shouldCreate',
+          message: `No ${LOCAL_CONFIG_FILENAME} found. Would you like to create one now?`,
+          default: true,
+        },
+      ]);
 
-    if (!shouldCreate) {
+      if (!shouldCreate) {
         console.log('Proceeding without a local format configuration.');
-        return null; // User chose not to create
-    }
+        return null;
+      }
 
-    // Prompt for initial format (variables will be handled later)
-    const { format } = await inquirer.prompt([
+      const { format } = await inquirer.prompt([
         {
-            type: 'input',
-            name: 'format',
-            message: 'Enter your desired commit message format (Core variables: {type}, {msg}, {gitBranch}. You can add custom variables):',
-            default: DEFAULT_FORMAT,
-            validate: input => input.trim().length > 0 ? true : 'Format cannot be empty.'
-        }
-    ]);
+          type: 'input',
+          name: 'format',
+          message: 'Enter your desired commit message format (Core variables: {type}, {msg}, {gitBranch}. You can add custom variables):',
+          default: DEFAULT_FORMAT,
+          validate: (input) => (input.trim().length > 0 ? true : 'Format cannot be empty.'),
+        },
+      ]);
 
-    const initialConfig = {
+      const initialConfig = {
         format: format.trim(),
-        variables: {} // Variable descriptions will be prompted for on first use
-    };
+        variables: {},
+      };
 
-    try {
+      try {
         await saveConfig(initialConfig);
         console.log(`✅ Initial configuration saved to ${LOCAL_CONFIG_FILENAME}`);
         return initialConfig;
-    } catch (error) {
+      } catch (error) {
         console.error(`❌ Failed to save initial config:`, error.message);
         return null;
+      }
     }
+
+    const content = fs.readFileSync(configPath, 'utf8');
+    if (!content || content.trim().length === 0) {
+      console.error(`❌ ${LOCAL_CONFIG_FILENAME} is empty.`);
+      return null;
+    }
+    const config = JSON.parse(content);
+    if (!validateConfig(config)) {
+      console.error(`❌ Invalid config in ${LOCAL_CONFIG_FILENAME}. Expected { "format": "non-empty string", "variables": {...} }.`);
+      return null;
+    }
+    console.log(`Loaded format from ${LOCAL_CONFIG_FILENAME}`);
+    return config;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      console.error(`❌ Invalid JSON in ${LOCAL_CONFIG_FILENAME}:`, error.message);
+    } else if (error.code === 'ENOENT') {
+      console.error(`❌ Could not read ${LOCAL_CONFIG_FILENAME}:`, error.message);
+    } else {
+      console.error(`❌ Error reading or parsing ${LOCAL_CONFIG_FILENAME}:`, error.message);
+    }
+    return null;
   }
 }
 

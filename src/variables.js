@@ -54,6 +54,13 @@ async function getSystemVariableValues() {
  * @returns {Promise<boolean>} True if the config was updated, false otherwise.
  */
 async function promptForMissingVariableDescriptions(variables, config) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    console.warn("Missing or invalid config object; skipping variable description prompts.");
+    return false;
+  }
+  if (!config.variables || typeof config.variables !== "object") {
+    config.variables = {};
+  }
   let configUpdated = false;
   // Filter out system variables AND 'type' AND 'msg' to find truly custom ones
   const customVariables = variables.filter(v =>

@@ -19,6 +19,9 @@ const { handleMultiCommit } = require("./multiCommit");
 const git = simpleGit();
 
 async function mainAction(options) {
+  if (!options || typeof options !== "object") {
+    throw new Error("Invalid options provided to mainAction.");
+  }
   if (!options.multi && getDefaultMultiConfig()) {
     options.multi = true;
   }
