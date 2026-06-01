@@ -51,9 +51,10 @@ async function getSystemVariableValues() {
  * Updates the config object in place and saves it.
  * @param {string[]} variables - Array of all variable names detected in the format.
  * @param {object} config - The current configuration object (will be mutated).
+ * @param {boolean} [nonInteractive=false] - If true, skip prompting and log a warning.
  * @returns {Promise<boolean>} True if the config was updated, false otherwise.
  */
-async function promptForMissingVariableDescriptions(variables, config) {
+async function promptForMissingVariableDescriptions(variables, config, nonInteractive = false) {
   let configUpdated = false;
   // Filter out system variables AND 'type' AND 'msg' to find truly custom ones
   const customVariables = variables.filter(v =>
@@ -74,6 +75,10 @@ async function promptForMissingVariableDescriptions(variables, config) {
   }
 
   if (questions.length > 0) {
+    if (nonInteractive) {
+      console.log('Non-interactive mode: skipping prompts for missing variable descriptions.');
+      return false;
+    }
     console.log('\nSome custom variables need descriptions:');
     const answers = await inquirer.prompt(questions);
     for (const variable in answers) {
