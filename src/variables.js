@@ -78,6 +78,10 @@ async function promptForMissingVariableDescriptions(variables, config, nonIntera
   }
 
   if (questions.length > 0) {
+    if (nonInteractive) {
+      console.log('Non-interactive mode: skipping prompts for missing variable descriptions.');
+      return false;
+    }
     console.log('\nSome custom variables need descriptions:');
     const answers = await inquirer.prompt(questions);
     for (const variable in answers) {

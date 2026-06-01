@@ -110,7 +110,7 @@ async function handleMultiCommit(options) {
     let localConfig = await localConfigManager.loadConfig(options.nonInteractive);
     const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
     const variablesInFormat = variableProcessor.detectVariables(format);
-    if (localConfig && variablesInFormat.length > 0 && !options.nonInteractive) {
+    if (localConfig && variablesInFormat.length > 0) {
       const configWasUpdated = await variableProcessor.promptForMissingVariableDescriptions(
         variablesInFormat,
         localConfig,
