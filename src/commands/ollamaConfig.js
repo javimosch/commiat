@@ -47,6 +47,17 @@ async function configureOllama() {
         name: "baseUrl",
         message: `Enter Ollama base URL (leave blank for default: ${DEFAULT_OLLAMA_BASE_URL}):`,
         default: currentBaseUrl,
+        validate: (input) => {
+          if (!input || input.trim() === "") return true;
+          try {
+            const url = new URL(input.trim());
+            return url.protocol === "http:" || url.protocol === "https:"
+              ? true
+              : "URL must use http or https protocol.";
+          } catch {
+            return "Please enter a valid URL (e.g., http://localhost:11434).";
+          }
+        },
       },
       {
         type: "input",

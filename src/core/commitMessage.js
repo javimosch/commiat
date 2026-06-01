@@ -15,9 +15,11 @@ const {
 } = require("./llm");
 
 function applyPrefixAffixToMessage(message, options) {
-  let messageToPrompt = String(message || "").trim();
+  if (!message || typeof message !== "string") return "";
+  let messageToPrompt = message.trim();
   if (!messageToPrompt) return messageToPrompt;
-  if (!options?.prefix && !options?.affix) return messageToPrompt;
+  if (!options || typeof options !== "object") return messageToPrompt;
+  if (!options.prefix && !options.affix) return messageToPrompt;
 
   const lines = messageToPrompt.split("\n");
   let firstLine = lines[0] || "";
@@ -33,15 +35,24 @@ function applyPrefixAffixToMessage(message, options) {
   return lines.join("\n");
 }
 
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function substituteVariablesInMessage(message, systemVarValues) {
-  let result = String(message || "").trim();
+  if (!message || typeof message !== "string") return "";
+  let result = message.trim();
+  if (!systemVarValues || typeof systemVarValues !== "object") return result;
 
   for (const varName in systemVarValues) {
+    if (!Object.prototype.hasOwnProperty.call(systemVarValues, varName)) continue;
     const varValue = systemVarValues[varName];
+    if (varValue == null) continue;
     const placeholder = `{${varName}}`;
-    const regex = new RegExp(`\\${placeholder}`, "g");
+    const escapedName = escapeRegex(varName);
+    const regex = new RegExp(`\\{${escapedName}\\}`, "g");
     if (result.includes(placeholder)) {
-      result = result.replace(regex, varValue);
+      result = result.replace(regex, String(varValue));
     }
   }
 
@@ -83,6 +94,9 @@ function buildCommitPrompt(diff, localConfig, systemVarValues) {
 }
 
 async function generateCommitMessage(diff, localConfig, systemVarValues) {
+  if (!diff || typeof diff !== "string" || diff.trim().length === 0) {
+    throw new Error("Cannot generate commit message: diff is empty.");
+  }
   const llmConfig = getLlmProviderConfig();
   console.log(
     `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,

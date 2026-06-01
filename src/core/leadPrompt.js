@@ -12,6 +12,16 @@ const { loadState, saveState, updateState, fsLogError } = require("./globalStore
 const LEAD_WEBHOOK_URL =
   "https://activepieces.coolify.intrane.fr/api/v1/webhooks/Uo0638ojR53Psjs2PFAgG";
 
+function isValidUrl(str) {
+  if (!str || typeof str !== "string") return false;
+  try {
+    const url = new URL(str);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 async function promptForLead(nonInteractive = false) {
   if (nonInteractive) {
     return;
@@ -53,24 +63,31 @@ async function promptForLead(nonInteractive = false) {
           name: "email",
           message: "Great! Please enter your email to receive the early access link when available",
           validate: (input) => {
+            const trimmed = input.trim();
+            if (trimmed.length > 254) return "Email address is too long (max 254 characters).";
+            if (trimmed.length < 5) return "Please enter a valid email address.";
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return emailRegex.test(input) ? true : "Please enter a valid email address.";
+            return emailRegex.test(trimmed) ? true : "Please enter a valid email address.";
           },
         },
       ]);
 
       if (email) {
-        const webhookUrlWithEmail = `${LEAD_WEBHOOK_URL}?email=${encodeURIComponent(email)}`;
-        console.log("Sending your interest...");
-        try {
-          await axios.get(webhookUrlWithEmail, { timeout: 5000 });
-          console.log("Thanks! We'll be in touch.");
-          updateState(STATE_KEY_LEAD_PROMPTED_SUCCESS, "1");
-        } catch (webhookError) {
-          console.warn(
-            "Could not send email interest automatically, but we appreciate your interest!",
-          );
-          await fsLogError(new Error(`Webhook failed: ${webhookError.message}`));
+        if (!isValidUrl(LEAD_WEBHOOK_URL)) {
+          console.warn("Lead webhook URL is misconfigured. Skipping.");
+        } else {
+          const webhookUrlWithEmail = `${LEAD_WEBHOOK_URL}?email=${encodeURIComponent(email)}`;
+          console.log("Sending your interest...");
+          try {
+            await axios.get(webhookUrlWithEmail, { timeout: 5000 });
+            console.log("Thanks! We'll be in touch.");
+            updateState(STATE_KEY_LEAD_PROMPTED_SUCCESS, "1");
+          } catch (webhookError) {
+            console.warn(
+              "Could not send email interest automatically, but we appreciate your interest!",
+            );
+            await fsLogError(new Error(`Webhook failed: ${webhookError.message}`));
+          }
         }
       } else {
         console.log("No email provided. Thanks for your interest anyway!");
