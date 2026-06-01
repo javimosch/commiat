@@ -43,6 +43,9 @@ Return ONLY JSON (no markdown, no explanation).`;
 }
 
 async function handleMultiCommit(options) {
+  if (!options || typeof options !== "object") {
+    throw new Error("Invalid options provided to handleMultiCommit.");
+  }
   try {
     if (options.untracked) {
       const untracked = await gitUtils.getUntrackedFiles();
