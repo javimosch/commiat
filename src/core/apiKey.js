@@ -37,7 +37,7 @@ function isOpenRouterConfigured() {
   return !!configApiKey;
 }
 
-async function getApiKey(promptIfNeeded = true) {
+async function getApiKey(promptIfNeeded = true, nonInteractive = false) {
   const envApiKey = process.env[CONFIG_KEY_API_KEY];
   if (envApiKey && envApiKey !== "YOUR_API_KEY_HERE") {
     return envApiKey;
@@ -49,7 +49,7 @@ async function getApiKey(promptIfNeeded = true) {
     return configApiKey;
   }
 
-  if (promptIfNeeded) {
+  if (promptIfNeeded && !nonInteractive) {
     return await promptForApiKey();
   }
   return null;
