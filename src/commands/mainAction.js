@@ -74,7 +74,7 @@ async function mainAction(options) {
     const diff = await ensureStagedFiles();
 
     const variablesInFormat = variableProcessor.detectVariables(format);
-    if (localConfig && variablesInFormat.length > 0) {
+    if (localConfig && variablesInFormat.length > 0 && !options.nonInteractive) {
       const configWasUpdated = await variableProcessor.promptForMissingVariableDescriptions(
         variablesInFormat,
         localConfig,
