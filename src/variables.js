@@ -17,12 +17,13 @@ const VARIABLE_REGEX = /\{([a-zA-Z0-9_]+)\}/g;
  * @returns {string[]} An array of unique variable names found.
  */
 function detectVariables(format) {
+  if (typeof format !== 'string') return [];
   const matches = format.matchAll(VARIABLE_REGEX);
   const variables = new Set();
   for (const match of matches) {
     variables.add(match[1]);
   }
-  variables.delete('msg'); // 'msg' is always handled implicitly by the LLM
+  variables.delete('msg');
   return Array.from(variables);
 }
 

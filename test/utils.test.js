@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
   getGitBranch,
   getGitBranchNumber,
+  getStagedFiles,
   extractNumberFromString,
 } = require("../src/utils/git");
 
@@ -58,4 +59,20 @@ test("getGitBranchNumber returns empty string when no leading digits", async () 
   } finally {
     console.log = originalLog;
   }
+});
+
+test("getStagedFiles returns files from diffSummary", async () => {
+  const mockGit = {
+    diffSummary: async () => ({ files: [{ file: "a.js" }, { file: "b.js" }] }),
+  };
+  const files = await getStagedFiles(mockGit);
+  assert.deepEqual(files, ["a.js", "b.js"]);
+});
+
+test("getStagedFiles returns empty array on git error", async () => {
+  const mockGit = {
+    diffSummary: async () => { throw new Error("git error"); },
+  };
+  const files = await getStagedFiles(mockGit);
+  assert.deepEqual(files, []);
 });

@@ -59,9 +59,14 @@ async function getGitBranchNumber(gitInstance) {
     }
 }
 
-async function getStagedFiles() {
-  const summary = await git.diffSummary(["--staged"]);
-  return summary.files.map(f => f.file);
+async function getStagedFiles(gitInstance) {
+  const g = gitInstance || git;
+  try {
+    const summary = await g.diffSummary(["--staged"]);
+    return summary.files.map(f => f.file);
+  } catch {
+    return [];
+  }
 }
 
 async function getUntrackedFiles() {
