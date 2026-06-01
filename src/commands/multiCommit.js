@@ -188,12 +188,15 @@ async function handleMultiCommit(options) {
 
     while (remaining.length > 0) {
       if (options.nonInteractive) {
+        printPreview(remaining);
         for (let i = 0; i < remaining.length; i++) {
           const g = remaining[i];
+          console.log(`\nCommitting group: ${g.group}`);
           await gitUtils.unstageAll();
           await git.add(g.files);
           const finalCommitMessage = await promptUser(g.suggestedMessage, true);
           await git.commit(finalCommitMessage, undefined, commitOptions);
+          console.log("✅ Group commit successful!");
         }
         remaining = [];
         break;
