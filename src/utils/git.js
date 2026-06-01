@@ -87,9 +87,10 @@ async function getRelevantFiles(options) {
   return files;
 }
 
-async function stageFiles(files) {
-  if (files.length === 0) return;
-  await git.add(files);
+async function stageFiles(files, gitInstance) {
+  if (!Array.isArray(files) || files.length === 0) return;
+  const g = gitInstance || git;
+  await g.add(files);
 }
 
 async function unstageAll() {

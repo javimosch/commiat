@@ -5,6 +5,7 @@ const {
   getGitBranch,
   getGitBranchNumber,
   getStagedFiles,
+  stageFiles,
   extractNumberFromString,
 } = require("../src/utils/git");
 
@@ -75,4 +76,25 @@ test("getStagedFiles returns empty array on git error", async () => {
   };
   const files = await getStagedFiles(mockGit);
   assert.deepEqual(files, []);
+});
+
+test("stageFiles does not throw on null files", async () => {
+  await stageFiles(null);
+});
+
+test("stageFiles does not throw on undefined files", async () => {
+  await stageFiles(undefined);
+});
+
+test("stageFiles does not throw on empty array", async () => {
+  await stageFiles([]);
+});
+
+test("stageFiles adds files via mock git", async () => {
+  let added = null;
+  const mockGit = {
+    add: async (files) => { added = files; },
+  };
+  await stageFiles(["a.js", "b.js"], mockGit);
+  assert.deepEqual(added, ["a.js", "b.js"]);
 });
