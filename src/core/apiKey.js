@@ -49,7 +49,7 @@ async function getApiKey(promptIfNeeded = true) {
     return configApiKey;
   }
 
-  if (promptIfNeeded) {
+  if (promptIfNeeded && process.stdout.isTTY) {
     return await promptForApiKey();
   }
   return null;
