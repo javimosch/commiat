@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
   parseGroupsFromLlmResponse,
   normalizeMultiCommitGroups,
+  extractFirstJsonArray,
 } = require("../src/utils/multiCommit");
 
 test("parseGroupsFromLlmResponse parses plain JSON array", () => {
@@ -64,6 +65,18 @@ test("normalizeMultiCommitGroups filters to relevant files, first-group-wins ove
   assert.deepEqual(groups[1].files, ["c.js"]);
   assert.deepEqual(unassignedFiles, []);
   assert.ok(warnings.some((w) => w.includes("first-group-wins")));
+});
+
+test("extractFirstJsonArray returns the first JSON array substring from surrounding text", () => {
+  const input = 'Prefix text [{"group":"A","files":["a.js"]}] suffix text';
+  const result = extractFirstJsonArray(input);
+  assert.equal(result, '[{"group":"A","files":["a.js"]}]');
+});
+
+test("extractFirstJsonArray returns null for non-string input", () => {
+  assert.equal(extractFirstJsonArray(42), null);
+  assert.equal(extractFirstJsonArray(null), null);
+  assert.equal(extractFirstJsonArray({}), null);
 });
 
 test("normalizeMultiCommitGroups skips empty groups and creates (Unassigned) group when needed", () => {
