@@ -107,8 +107,8 @@ async function callOllamaApi(prompt, llmConfig) {
   }
 }
 
-async function callOpenRouterApi(prompt, llmConfig) {
-  const apiKey = await getApiKey();
+async function callOpenRouterApi(prompt, llmConfig, nonInteractive = false) {
+  const apiKey = await getApiKey(true, nonInteractive);
   if (!apiKey) {
     throw new Error("Could not obtain OpenRouter API key.");
   }
@@ -160,7 +160,7 @@ async function callOpenRouterApi(prompt, llmConfig) {
   }
 }
 
-async function callOpenRouterWithPromptSizing(prompt, llmConfig) {
+async function callOpenRouterWithPromptSizing(prompt, llmConfig, nonInteractive = false) {
   const maxPromptChars = getMaxPromptChars();
   const tierBudgets = [
     maxPromptChars,
@@ -180,7 +180,7 @@ async function callOpenRouterWithPromptSizing(prompt, llmConfig) {
           `⚠️ Retrying OpenRouter request with reduced prompt (tier ${i + 1}/${tierBudgets.length}, ~${budget} chars)...`,
         );
       }
-      return await callOpenRouterApi(sizedPrompt, llmConfig);
+      return await callOpenRouterApi(sizedPrompt, llmConfig, nonInteractive);
     } catch (err) {
       lastErr = err;
       if (!isLikelyContextLimitError(err)) {
@@ -192,7 +192,7 @@ async function callOpenRouterWithPromptSizing(prompt, llmConfig) {
   throw lastErr;
 }
 
-async function generateLlmText(prompt, llmConfig, allowPromptSizing = false) {
+async function generateLlmText(prompt, llmConfig, allowPromptSizing = false, nonInteractive = false) {
   console.log(
     `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,
   );
@@ -223,9 +223,9 @@ async function generateLlmText(prompt, llmConfig, allowPromptSizing = false) {
           const openRouterConfig = { provider: "openrouter", model: openRouterModel };
 
           if (allowPromptSizing) {
-            return await callOpenRouterWithPromptSizing(prompt, openRouterConfig);
+            return await callOpenRouterWithPromptSizing(prompt, openRouterConfig, nonInteractive);
           }
-          return await callOpenRouterApi(prompt, openRouterConfig);
+          return await callOpenRouterApi(prompt, openRouterConfig, nonInteractive);
         }
 
         throw ollamaError;
@@ -233,10 +233,10 @@ async function generateLlmText(prompt, llmConfig, allowPromptSizing = false) {
     }
 
     if (allowPromptSizing) {
-      return await callOpenRouterWithPromptSizing(prompt, llmConfig);
+      return await callOpenRouterWithPromptSizing(prompt, llmConfig, nonInteractive);
     }
 
-    return await callOpenRouterApi(prompt, llmConfig);
+    return await callOpenRouterApi(prompt, llmConfig, nonInteractive);
   } catch (error) {
     await fsLogError(error);
     throw error;

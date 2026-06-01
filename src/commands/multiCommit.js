@@ -68,7 +68,7 @@ async function handleMultiCommit(options) {
 
     try {
       const groupingPrompt = buildGroupingPrompt(diff);
-      groupAnalysis = await generateLlmText(groupingPrompt, llmConfig, true);
+      groupAnalysis = await generateLlmText(groupingPrompt, llmConfig, true, options.nonInteractive);
       const parsedGroups = multiCommitUtils.parseGroupsFromLlmResponse(groupAnalysis);
       const { groups, warnings } = multiCommitUtils.normalizeMultiCommitGroups(
         parsedGroups,
@@ -127,7 +127,7 @@ async function handleMultiCommit(options) {
     );
     for (const g of normalizedGroups) {
       const groupDiff = await git.diff(["--staged", "--", ...g.files]);
-      const msg = await generateCommitMessage(groupDiff, localConfig, systemVarValues);
+      const msg = await generateCommitMessage(groupDiff, localConfig, systemVarValues, options.nonInteractive);
       g.suggestedMessage = applyPrefixAffixToMessage(msg, options);
     }
 

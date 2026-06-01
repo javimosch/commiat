@@ -82,7 +82,7 @@ function buildCommitPrompt(diff, localConfig, systemVarValues) {
   return prompt;
 }
 
-async function generateCommitMessage(diff, localConfig, systemVarValues) {
+async function generateCommitMessage(diff, localConfig, systemVarValues, nonInteractive = false) {
   const llmConfig = getLlmProviderConfig();
   console.log(
     `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,
@@ -117,7 +117,7 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
             DEFAULT_OPENROUTER_MODEL;
           const openRouterConfig = { provider: "openrouter", model: openRouterModel };
 
-          let message = await callOpenRouterWithPromptSizing(prompt, openRouterConfig);
+          let message = await callOpenRouterWithPromptSizing(prompt, openRouterConfig, nonInteractive);
           message = substituteVariablesInMessage(message, systemVarValues);
           return message;
         }
@@ -126,7 +126,7 @@ async function generateCommitMessage(diff, localConfig, systemVarValues) {
       }
     }
 
-    let message = await callOpenRouterWithPromptSizing(prompt, llmConfig);
+    let message = await callOpenRouterWithPromptSizing(prompt, llmConfig, nonInteractive);
     message = substituteVariablesInMessage(message, systemVarValues);
     return message;
   } catch (error) {
