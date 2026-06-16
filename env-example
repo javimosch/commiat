@@ -1,5 +1,23 @@
-# OpenAI API Key
-OPENAI_API_KEY=your-api-key-here
+# OpenRouter API Key (required if using OpenRouter provider)
+COMMIAT_OPENROUTER_API_KEY=your-api-key-here
 
-# Custom commit message format
-COMMIAT_FORMAT="{type} (context) msg (#{gitBranch})"
+# OpenRouter model ID (default: google/gemini-2.5-flash-lite)
+COMMIAT_OPENROUTER_MODEL=google/gemini-2.5-flash-lite
+
+# Set to "true" to use Ollama instead of OpenRouter
+COMMIAT_USE_OLLAMA=false
+
+# Ollama base URL (default: http://localhost:11434)
+COMMIAT_OLLAMA_BASE_URL=http://localhost:11434
+
+# Ollama model (default: llama3)
+COMMIAT_OLLAMA_MODEL=llama3
+
+# Set to "true" to fall back to OpenRouter if Ollama fails
+COMMIAT_OLLAMA_FALLBACK_TO_OPENROUTER=false
+
+# Enable multi-commit mode by default (true/false)
+COMMIAT_DEFAULT_MULTI=false
+
+# Maximum prompt characters for prompt sizing (optional)
+COMMIAT_MAX_PROMPT_CHARS=300000
