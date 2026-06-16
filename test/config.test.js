@@ -130,6 +130,11 @@ test("validateConfig returns false for config with null format", () => {
   assert.equal(result, false);
 });
 
+test("validateConfig returns false for config with undefined format", () => {
+  const result = validateConfig({ format: undefined, variables: {} });
+  assert.equal(result, false);
+});
+
 test("validateConfig returns false for config with number format", () => {
   const result = validateConfig({ format: 42, variables: {} });
   assert.equal(result, false);
@@ -154,3 +159,18 @@ test("saveConfig throws for invalid config", async () => {
     { message: /Invalid config object/ }
   );
 });
+
+test("validateConfig returns true for format with only msg variable", () => {
+  const result = validateConfig({ format: "{msg}", variables: {} });
+  assert.equal(result, true);
+});
+
+test("validateConfig returns false for non-string variable description array", () => {
+  const result = validateConfig({
+    format: "{type}({scope}): {msg}",
+    variables: { scope: ["module", "component"] },
+  });
+  assert.equal(result, false);
+});
+
+
