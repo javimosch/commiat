@@ -125,6 +125,21 @@ test("validateConfig returns true when variable description is a non-empty strin
   assert.equal(result, true);
 });
 
+test("validateConfig returns false for config with null format", () => {
+  const result = validateConfig({ format: null, variables: {} });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for config with number format", () => {
+  const result = validateConfig({ format: 42, variables: {} });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false when variables contains number key", () => {
+  const result = validateConfig({ format: "{type}({1}): {msg}", variables: { 1: "desc" } });
+  assert.equal(result, true);
+});
+
 test("saveConfig throws for invalid config", async () => {
   await assert.rejects(
     async () => { await saveConfig({ format: "", variables: {} }); },
