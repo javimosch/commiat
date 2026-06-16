@@ -70,6 +70,11 @@ test("validateConfig returns false for empty format string", () => {
   assert.equal(result, false);
 });
 
+test("validateConfig returns false for whitespace-only format", () => {
+  const result = validateConfig({ format: "   ", variables: {} });
+  assert.equal(result, false);
+});
+
 test("validateConfig returns false for null variables", () => {
   const result = validateConfig({ format: "{type}: {msg}", variables: null });
   assert.equal(result, false);
@@ -107,6 +112,11 @@ test("validateConfig returns false when variable description is empty string", (
 
 test("validateConfig returns false when variable description is an object", () => {
   const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: { level: "detailed" } } });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false when variable description is boolean", () => {
+  const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: true } });
   assert.equal(result, false);
 });
 
