@@ -73,3 +73,14 @@ test("applyPrefixAffixToMessage handles null options", () => {
   const msg = "feat: add feature";
   assert.equal(applyPrefixAffixToMessage(msg, null), "feat: add feature");
 });
+
+test("applyPrefixAffixToMessage handles only-whitespace message", () => {
+  assert.equal(applyPrefixAffixToMessage("   ", { prefix: "[WIP]" }), "");
+});
+
+test("substituteVariablesInMessage handles values with special regex characters", () => {
+  const msg = "fix: handle {path}";
+  const vals = { path: "/user/{id}/profile" };
+  const result = substituteVariablesInMessage(msg, vals);
+  assert.ok(result.includes("/user/{id}/profile"));
+});
