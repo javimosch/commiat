@@ -58,3 +58,11 @@ commiat --api-key YOUR_KEY
 2. Run commiat: `commiat`
 3. Review the generated commit message
 4. Commit if satisfied, or edit and commit manually
+
+## Troubleshooting
+
+- **"command not found"** — Ensure commiat is installed globally: `npm install -g commiat`
+- **"API key not configured"** — Set `COMMIAT_OPENROUTER_API_KEY` in your environment or run `commiat` interactively
+- **No staged changes detected** — Run `git add` first, or use `--unstaged` for unstaged changes
+- **LLM returns errors** — Check your API key validity and model availability; errors are logged to `~/.commiat/error.log`
+- **Unexpected behavior** — Run with `--dry-run` first to preview the generated message without committing
