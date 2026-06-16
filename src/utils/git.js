@@ -7,8 +7,7 @@ const git = simpleGit();
  * @returns {string} The first number found, or an empty string if none.
  */
 function extractNumberFromString(branchName) {
-    if (!branchName) return '';
-    // Matches the first sequence of one or more digits
+    if (typeof branchName !== "string" || branchName.length === 0) return '';
     const match = branchName.match(/\d+/);
     return match ? match[0] : '';
 }
@@ -19,7 +18,7 @@ function extractNumberFromString(branchName) {
  * @throws {Error} If not in a git repository or branch cannot be determined.
  */
 async function getGitBranch(gitInstance) {
-  const g = gitInstance || git;
+  const g = (gitInstance && typeof gitInstance.status === "function") ? gitInstance : git;
   try {
     const status = await g.status();
     if (!status.current) {
@@ -29,11 +28,12 @@ async function getGitBranch(gitInstance) {
     console.log(`Detected current branch: ${status.current}`);
     return status.current;
   } catch (error) {
-    console.error('❌ Error getting git branch:', error.message);
-    if (error.message.includes('not a git repository')) {
+    const msg = error?.message ?? String(error);
+    console.error('❌ Error getting git branch:', msg);
+    if (msg.includes('not a git repository')) {
         throw new Error('Not running in a git repository.');
     }
-    throw new Error(`Failed to get current git branch: ${error.message}`);
+    throw new Error(`Failed to get current git branch: ${msg}`);
   }
 }
 
@@ -60,7 +60,7 @@ async function getGitBranchNumber(gitInstance) {
 }
 
 async function getStagedFiles(gitInstance) {
-  const g = gitInstance || git;
+  const g = (gitInstance && typeof gitInstance.diffSummary === "function") ? gitInstance : git;
   try {
     const summary = await g.diffSummary(["--staged"]);
     if (!summary || !Array.isArray(summary.files)) return [];
@@ -91,14 +91,22 @@ async function getRelevantFiles(options) {
 
 async function stageFiles(files, gitInstance) {
   if (!Array.isArray(files) || files.length === 0) return;
-  const g = gitInstance || git;
-  await g.add(files);
+  const g = (gitInstance && typeof gitInstance.add === "function") ? gitInstance : git;
+  try {
+    await g.add(files.filter(f => typeof f === "string" && f.length > 0));
+  } catch (error) {
+    console.error("❌ Failed to stage files:", error?.message ?? error);
+  }
 }
 
 async function unstageAll() {
-  const staged = await getStagedFiles();
-  if (staged.length > 0) {
-    await git.reset(["--", ...staged]);
+  try {
+    const staged = await getStagedFiles();
+    if (staged.length > 0) {
+      await git.reset(["--", ...staged]);
+    }
+  } catch (error) {
+    console.error("❌ Failed to unstage files:", error?.message ?? error);
   }
 }
 
