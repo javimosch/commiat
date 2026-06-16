@@ -13,7 +13,16 @@
   "scripts": {
     "test": "node --test"
   },
-  "keywords": [],
+  "keywords": [
+    "git",
+    "commit",
+    "commit-message",
+    "ai",
+    "cli",
+    "automation",
+    "developer-tools",
+    "productivity"
+  ],
   "author": "Javier Leadro Arancibia",
   "email": "arancibiajav@gmail.com",
   "license": "MIT",
