@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const axios = require("axios");
 
 const inquirer = require("inquirer");
 
@@ -34,6 +35,40 @@ test("configureOllama writes config when useOllama true", async () => {
   } finally {
     inquirer.prompt = promptStub;
     require("../src/core/globalStore").updateGlobalConfig = updateStub;
+  }
+});
+
+test("selectModel handles API failure gracefully", async () => {
+  const getStub = axios.get;
+  axios.get = async () => { throw new Error("Network error"); };
+  const promptStub = inquirer.prompt;
+  inquirer.prompt = async () => ({ selected: "custom/model" });
+  const originalLog = console.error;
+  console.error = () => {};
+  try {
+    await selectModel();
+    assert.ok(true, "selectModel must not throw on API failure");
+  } finally {
+    axios.get = getStub;
+    inquirer.prompt = promptStub;
+    console.error = originalLog;
+  }
+});
+
+test("selectModel handles empty model list", async () => {
+  const getStub = axios.get;
+  axios.get = async () => ({ data: { data: [] } });
+  const promptStub = inquirer.prompt;
+  inquirer.prompt = async () => ({ selected: "custom/model" });
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    await selectModel();
+    assert.ok(true, "selectModel must not throw on empty model list");
+  } finally {
+    axios.get = getStub;
+    inquirer.prompt = promptStub;
+    console.log = originalLog;
   }
 });
 
