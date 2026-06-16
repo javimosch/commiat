@@ -84,3 +84,13 @@ test("no .js file in src is empty", () => {
     assert.ok(content.includes("module.exports"), `file missing module.exports: src/${rel}`);
   }
 });
+
+test("all source modules can be required without error", () => {
+  for (const rel of ALL_SOURCE_FILES) {
+    if (rel === "cli.js") continue;
+    const absPath = path.resolve(SRC, rel);
+    assert.doesNotThrow(() => {
+      require(absPath);
+    }, `module failed to load: src/${rel}`);
+  }
+});
