@@ -83,10 +83,14 @@ async function promptForMissingVariableDescriptions(variables, config, nonIntera
       return false;
     }
     console.log('\nSome custom variables need descriptions:');
-    const answers = await inquirer.prompt(questions);
-    for (const variable in answers) {
-      config.variables[variable] = answers[variable].trim();
-      configUpdated = true;
+    try {
+      const answers = await inquirer.prompt(questions);
+      for (const variable in answers) {
+        config.variables[variable] = answers[variable].trim();
+        configUpdated = true;
+      }
+    } catch {
+      return configUpdated;
     }
     if (configUpdated) {
       try {
