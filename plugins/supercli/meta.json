@@ -4,8 +4,13 @@
     "commiat",
     "git",
     "commit",
+    "commit-message",
     "ai",
-    "developer-experience"
+    "llm",
+    "cli",
+    "developer-experience",
+    "productivity",
+    "automation"
   ],
   "has_learn": true
 }
