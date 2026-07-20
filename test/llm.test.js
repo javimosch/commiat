@@ -8,6 +8,7 @@ const {
   callOpenRouterApi,
   callOpenRouterWithPromptSizing,
   formatOpenRouterErrorForCli,
+  generateLlmText,
 } = require("../src/core/llm");
 const { isLikelyContextLimitError, middleOutCompress } = require("../src/core/promptSizing");
 
@@ -267,4 +268,25 @@ test("callOpenRouterWithPromptSizing uses middleOutCompress", async () => {
     if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
     else process.env[CONFIG_KEY_API_KEY] = prevKey;
   }
+});
+
+test("generateLlmText rejects unsupported provider", async () => {
+  await assert.rejects(
+    () => generateLlmText("prompt", { provider: "anthropic", model: "claude" }),
+    { message: /Unsupported LLM provider/ },
+  );
+});
+
+test("generateLlmText rejects missing llmConfig", async () => {
+  await assert.rejects(
+    () => generateLlmText("prompt", null),
+    { message: /llmConfig is required/ },
+  );
+});
+
+test("generateLlmText rejects non-string prompt", async () => {
+  await assert.rejects(
+    () => generateLlmText(42, { provider: "openrouter", model: "test" }),
+    { message: /prompt must be a string/ },
+  );
 });

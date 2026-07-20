@@ -301,11 +301,17 @@ async function generateLlmText(prompt, llmConfig, allowPromptSizing = false, non
       }
     }
 
-    if (allowPromptSizing) {
-      return await callOpenRouterWithPromptSizing(prompt, llmConfig, nonInteractive);
+    if (llmConfig.provider === "openrouter") {
+      if (allowPromptSizing) {
+        return await callOpenRouterWithPromptSizing(prompt, llmConfig, nonInteractive);
+      }
+      return await callOpenRouterApi(prompt, llmConfig, nonInteractive);
     }
 
-    return await callOpenRouterApi(prompt, llmConfig, nonInteractive);
+    throw createProviderError(
+      llmConfig.provider || "unknown",
+      `Unsupported LLM provider: "${llmConfig.provider}". Expected "ollama" or "openrouter".`,
+    );
   } catch (error) {
     await fsLogError(error);
     throw error;

@@ -16,6 +16,7 @@ const {
 
 const { generateLlmText, isLikelyContextLimitError } = require("../core/llm");
 const { getLlmProviderConfig } = require("../core/providerConfig");
+const { runGitOperation } = require("../core/gitHelpers");
 
 const git = simpleGit();
 
@@ -46,12 +47,15 @@ async function handleMultiCommit(options) {
   if (!options || typeof options !== "object") {
     throw new Error("Invalid options provided to handleMultiCommit.");
   }
+  if (options.untracked != null && typeof options.untracked !== "boolean") {
+    throw new Error("Invalid options.untracked: expected a boolean.");
+  }
   try {
     if (options.untracked) {
       const untracked = await gitUtils.getUntrackedFiles();
       if (untracked.length > 0) {
         console.log(`Staging ${untracked.length} untracked files for multi-commit...`);
-        await git.add(untracked);
+        await runGitOperation("Failed to stage untracked files", () => git.add(untracked));
       }
     }
 
@@ -61,7 +65,7 @@ async function handleMultiCommit(options) {
       return;
     }
 
-    const diff = await git.diff(["--staged"]);
+    const diff = await runGitOperation("Failed to get staged diff", () => git.diff(["--staged"]));
     if (typeof diff !== "string") {
       throw new Error("Failed to get staged diff: unexpected response from git.");
     }
@@ -137,14 +141,28 @@ async function handleMultiCommit(options) {
         g.suggestedMessage = "";
         continue;
       }
-      const groupDiff = await git.diff(["--staged", "--", ...g.files]);
+      const groupDiff = await runGitOperation(`Failed to get diff for group "${g.group}"`, () =>
+        git.diff(["--staged", "--", ...g.files]),
+      );
       if (typeof groupDiff !== "string") {
         console.warn(`⚠️ Could not get diff for group "${g.group}". Skipping message generation.`);
         g.suggestedMessage = "";
         continue;
       }
-      const msg = await generateCommitMessage(groupDiff, localConfig, systemVarValues, options.nonInteractive);
-      g.suggestedMessage = applyPrefixAffixToMessage(msg, options);
+      try {
+        const msg = await generateCommitMessage(
+          groupDiff,
+          localConfig,
+          systemVarValues,
+          options.nonInteractive,
+        );
+        g.suggestedMessage = applyPrefixAffixToMessage(msg, options);
+      } catch (genError) {
+        console.warn(
+          `⚠️ Failed to generate message for group "${g.group}": ${genError.message}. Skipping.`,
+        );
+        g.suggestedMessage = "";
+      }
     }
 
     const printPreview = (groups) => {
@@ -214,7 +232,7 @@ async function handleMultiCommit(options) {
           const g = remaining[i];
           console.log(`\nCommitting group: ${g.group}`);
           await gitUtils.unstageAll();
-          await git.add(g.files);
+          await runGitOperation(`Failed to stage files for group "${g.group}"`, () => git.add(g.files));
           const finalCommitMessage = await promptUser(g.suggestedMessage, true);
           if (!finalCommitMessage) {
             console.log("\n❌ Commit cancelled (empty message). Unstaging remaining changes...");
@@ -222,7 +240,9 @@ async function handleMultiCommit(options) {
             await gitUtils.unstageAll();
             break;
           }
-          await git.commit(finalCommitMessage, undefined, commitOptions);
+          await runGitOperation(`Failed to commit group "${g.group}"`, () =>
+            git.commit(finalCommitMessage, undefined, commitOptions),
+          );
           console.log("✅ Group commit successful!");
         }
         remaining = [];
@@ -246,7 +266,7 @@ async function handleMultiCommit(options) {
       for (const g of selected) {
         console.log(`\nCommitting group: ${g.group}`);
         await gitUtils.unstageAll();
-        await git.add(g.files);
+        await runGitOperation(`Failed to stage files for group "${g.group}"`, () => git.add(g.files));
 
         const finalCommitMessage = await promptUser(g.suggestedMessage, false);
         if (!finalCommitMessage) {
@@ -261,7 +281,9 @@ async function handleMultiCommit(options) {
         } else {
           console.log("Committing...");
         }
-        await git.commit(finalCommitMessage, undefined, commitOptions);
+        await runGitOperation(`Failed to commit group "${g.group}"`, () =>
+          git.commit(finalCommitMessage, undefined, commitOptions),
+        );
         console.log("✅ Group commit successful!");
 
         remaining = remaining.filter((x) => x !== g);

@@ -34,6 +34,16 @@ function validateGroupShape(group, index) {
   if (!group || typeof group !== "object" || Array.isArray(group)) {
     throw new Error(`LLM group at index ${index} is not a valid object.`);
   }
+  if (group.group !== undefined && typeof group.group !== "string") {
+    throw new Error(
+      `LLM group at index ${index} has invalid "group" field (expected string).`,
+    );
+  }
+  if (group.description !== undefined && typeof group.description !== "string") {
+    throw new Error(
+      `LLM group at index ${index} has invalid "description" field (expected string).`,
+    );
+  }
   if (group.files !== undefined && !Array.isArray(group.files)) {
     throw new Error(
       `LLM group at index ${index} has invalid "files" field (expected array).`,

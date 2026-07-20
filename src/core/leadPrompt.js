@@ -66,6 +66,7 @@ async function promptForLead(nonInteractive = false) {
           name: "email",
           message: "Great! Please enter your email to receive the early access link when available",
           validate: (input) => {
+            if (typeof input !== "string") return "Please enter a valid email address.";
             const trimmed = input.trim();
             if (trimmed.length > 254) return "Email address is too long (max 254 characters).";
             if (trimmed.length < 5) return "Please enter a valid email address.";

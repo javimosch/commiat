@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { ensureStagedFiles } = require("../src/core/gitHelpers");
+const { ensureStagedFiles, runGitOperation } = require("../src/core/gitHelpers");
 
 test("ensureStagedFiles returns diff when staged files exist", async () => {
   const mockGit = {
@@ -55,4 +55,19 @@ test("ensureStagedFiles wraps git errors", async () => {
     () => ensureStagedFiles(mockGit),
     /Failed to get staged diff: git not found/,
   );
+});
+
+test("runGitOperation wraps errors with description", async () => {
+  await assert.rejects(
+    () =>
+      runGitOperation("Failed to commit", async () => {
+        throw new Error("hook failed");
+      }),
+    { message: "Failed to commit: hook failed" },
+  );
+});
+
+test("runGitOperation returns operation result", async () => {
+  const result = await runGitOperation("noop", async () => "ok");
+  assert.equal(result, "ok");
 });

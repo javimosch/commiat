@@ -103,6 +103,25 @@ test("stageFiles adds files via mock git", async () => {
   assert.deepEqual(added, ["a.js", "b.js"]);
 });
 
+test("stageFiles throws on git add failure", async () => {
+  const mockGit = {
+    add: async () => { throw new Error("permission denied"); },
+  };
+  await assert.rejects(
+    () => stageFiles(["a.js"], mockGit),
+    { message: /Failed to stage files: permission denied/ },
+  );
+});
+
+test("stageFiles filters out non-string entries", async () => {
+  let added = null;
+  const mockGit = {
+    add: async (files) => { added = files; },
+  };
+  await stageFiles(["a.js", null, "", 42], mockGit);
+  assert.deepEqual(added, ["a.js"]);
+});
+
 test("getRelevantFiles works with null options", async () => {
   const files = await getRelevantFiles(null);
   assert.deepEqual(files, []);
