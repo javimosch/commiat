@@ -4,6 +4,7 @@
  */
 
 function dedupePreserveOrder(items) {
+  if (!Array.isArray(items)) return [];
   const seen = new Set();
   const out = [];
   for (const item of items) {

@@ -1,6 +1,9 @@
 const inquirer = require("inquirer");
 
 async function promptUser(initialMessage, nonInteractive = false) {
+  if (typeof initialMessage !== "string") {
+    return null;
+  }
   if (nonInteractive) {
     console.log(`Commit message: "${initialMessage}"`);
     return initialMessage;

@@ -80,7 +80,7 @@ async function getUntrackedFiles() {
 
 async function getRelevantFiles(options) {
   let files = await getStagedFiles();
-  if (options.untracked) {
+  if (options && options.untracked) {
     const untracked = await getUntrackedFiles();
     files = [...new Set([...files, ...untracked])];
   }
@@ -101,7 +101,12 @@ async function unstageAll() {
 }
 
 async function getFileStatus() {
-  return await git.status();
+  try {
+    return await git.status();
+  } catch (error) {
+    console.error("Failed to get git status:", error.message);
+    return { files: [] };
+  }
 }
 
 module.exports = {

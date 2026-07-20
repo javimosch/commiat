@@ -5,6 +5,7 @@ const {
   getGitBranch,
   getGitBranchNumber,
   getStagedFiles,
+  getRelevantFiles,
   stageFiles,
   extractNumberFromString,
 } = require("../src/utils/git");
@@ -14,6 +15,8 @@ test("extractNumberFromString extracts leading number", () => {
   assert.equal(extractNumberFromString("456abc"), "456");
   assert.equal(extractNumberFromString("no-number"), "");
   assert.equal(extractNumberFromString(""), "");
+  assert.equal(extractNumberFromString(null), "");
+  assert.equal(extractNumberFromString(undefined), "");
 });
 
 test("getGitBranch parses simple branch name", async () => {
@@ -97,4 +100,14 @@ test("stageFiles adds files via mock git", async () => {
   };
   await stageFiles(["a.js", "b.js"], mockGit);
   assert.deepEqual(added, ["a.js", "b.js"]);
+});
+
+test("getRelevantFiles works with null options", async () => {
+  const files = await getRelevantFiles(null);
+  assert.deepEqual(files, []);
+});
+
+test("getRelevantFiles works with undefined options", async () => {
+  const files = await getRelevantFiles(undefined);
+  assert.deepEqual(files, []);
 });

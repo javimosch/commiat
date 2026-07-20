@@ -6,6 +6,7 @@ function getMaxPromptChars() {
 }
 
 function isLikelyContextLimitError(error) {
+  if (!error) return false;
   const status = error?.responseStatus;
   if (status !== 400) return false;
 

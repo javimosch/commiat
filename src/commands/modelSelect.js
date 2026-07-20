@@ -11,7 +11,7 @@ async function selectModel() {
   console.log("Fetching OpenRouter models...");
   try {
     const { data } = await axios.get("https://openrouter.ai/api/v1/models");
-    let models = data.data
+    let models = (data?.data || [])
       .map((m) => ({
         name: `${m.name} - ${m.id}`,
         value: m.id,
