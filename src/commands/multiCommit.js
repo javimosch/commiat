@@ -20,6 +20,11 @@ const { runGitOperation } = require("../core/gitHelpers");
 
 const git = simpleGit();
 
+function filterStageableFiles(files) {
+  if (!Array.isArray(files)) return [];
+  return files.filter((f) => typeof f === "string" && f.trim().length > 0);
+}
+
 function buildGroupingPrompt(diff) {
   return `You are an expert software engineer analyzing Git changes.
 
@@ -232,7 +237,13 @@ async function handleMultiCommit(options) {
           const g = remaining[i];
           console.log(`\nCommitting group: ${g.group}`);
           await gitUtils.unstageAll();
-          await runGitOperation(`Failed to stage files for group "${g.group}"`, () => git.add(g.files));
+          const filesToStage = filterStageableFiles(g.files);
+          if (filesToStage.length === 0) {
+            console.warn(`⚠️ Skipping group "${g.group}" with no valid files to stage.`);
+            allSuccessful = false;
+            break;
+          }
+          await runGitOperation(`Failed to stage files for group "${g.group}"`, () => git.add(filesToStage));
           const finalCommitMessage = await promptUser(g.suggestedMessage, true);
           if (!finalCommitMessage) {
             console.log("\n❌ Commit cancelled (empty message). Unstaging remaining changes...");
@@ -266,7 +277,13 @@ async function handleMultiCommit(options) {
       for (const g of selected) {
         console.log(`\nCommitting group: ${g.group}`);
         await gitUtils.unstageAll();
-        await runGitOperation(`Failed to stage files for group "${g.group}"`, () => git.add(g.files));
+        const filesToStage = filterStageableFiles(g.files);
+        if (filesToStage.length === 0) {
+          console.warn(`⚠️ Skipping group "${g.group}" with no valid files to stage.`);
+          allSuccessful = false;
+          break;
+        }
+        await runGitOperation(`Failed to stage files for group "${g.group}"`, () => git.add(filesToStage));
 
         const finalCommitMessage = await promptUser(g.suggestedMessage, false);
         if (!finalCommitMessage) {

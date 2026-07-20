@@ -78,12 +78,13 @@ function saveGlobalConfig(configObj) {
   try {
     fs.writeFileSync(cfgPath, fileContent.trim(), "utf8");
   } catch (error) {
-    console.error(`Error writing global config file ${cfgPath}:`, error);
+    const msg = error?.message ?? String(error);
+    throw new Error(`Error writing global config file ${cfgPath}: ${msg}`);
   }
 }
 
 function updateGlobalConfig(key, value) {
-  if (!key || typeof key !== "string") {
+  if (!key || typeof key !== "string" || key.trim().length === 0) {
     console.error("Invalid key provided to updateGlobalConfig");
     return;
   }
@@ -130,12 +131,13 @@ function saveState(stateObj) {
   try {
     fs.writeFileSync(statePath, fileContent.trim(), "utf8");
   } catch (error) {
-    console.error(`Error writing global state file ${statePath}:`, error);
+    const msg = error?.message ?? String(error);
+    throw new Error(`Error writing global state file ${statePath}: ${msg}`);
   }
 }
 
 function updateState(key, value) {
-  if (!key || typeof key !== "string") {
+  if (!key || typeof key !== "string" || key.trim().length === 0) {
     console.error("Invalid key provided to updateState");
     return;
   }

@@ -77,10 +77,13 @@ async function promptForLead(nonInteractive = false) {
       ]);
 
       if (email) {
-        if (!isValidUrl(LEAD_WEBHOOK_URL)) {
+        const trimmedEmail = typeof email === "string" ? email.trim() : "";
+        if (!trimmedEmail) {
+          console.log("No email provided. Thanks for your interest anyway!");
+        } else if (!isValidUrl(LEAD_WEBHOOK_URL)) {
           console.warn("Lead webhook URL is misconfigured. Skipping.");
         } else {
-          const webhookUrlWithEmail = `${LEAD_WEBHOOK_URL}?email=${encodeURIComponent(email)}`;
+          const webhookUrlWithEmail = `${LEAD_WEBHOOK_URL}?email=${encodeURIComponent(trimmedEmail)}`;
           console.log("Sending your interest...");
           try {
             await axios.get(webhookUrlWithEmail, { timeout: 5000 });
@@ -90,7 +93,7 @@ async function promptForLead(nonInteractive = false) {
             console.warn(
               "Could not send email interest automatically, but we appreciate your interest!",
             );
-            await fsLogError(new Error(`Webhook failed: ${webhookError.message}`));
+            await fsLogError(new Error(`Webhook failed: ${webhookError?.message ?? String(webhookError)}`));
           }
         }
       } else {

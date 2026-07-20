@@ -1,6 +1,10 @@
 const axios = require("axios");
 
-const { OPENROUTER_API_URL } = require("./constants");
+const {
+  OPENROUTER_API_URL,
+  getLlmHttpTimeoutMs,
+  isAxiosTimeoutError,
+} = require("./constants");
 const { getApiKey, isOpenRouterConfigured } = require("./apiKey");
 const { loadGlobalConfig, fsLogError } = require("./globalStore");
 const {
@@ -129,7 +133,10 @@ async function callOllamaApi(prompt, llmConfig) {
         messages: [{ role: "user", content: prompt }],
         stream: false,
       },
-      { headers: { "Content-Type": "application/json" } },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: getLlmHttpTimeoutMs(),
+      },
     );
     const ollamaContent = response.data?.message?.content;
     if (typeof ollamaContent === "string" && ollamaContent.trim().length > 0) {
@@ -152,7 +159,8 @@ async function callOllamaApi(prompt, llmConfig) {
     enhancedError.requestUrl = ollamaUrl;
     enhancedError.responseStatus = error?.response?.status;
     enhancedError.responseData = error?.response?.data;
-    enhancedError.isNetworkError = !!error?.request && !error?.response;
+    enhancedError.isNetworkError =
+      (!!error?.request && !error?.response) || isAxiosTimeoutError(error);
     throw enhancedError;
   }
 }
@@ -183,6 +191,7 @@ async function callOpenRouterApi(prompt, llmConfig, nonInteractive = false) {
           "HTTP-Referer": "http://localhost",
           "X-Title": "Commiat CLI",
         },
+        timeout: getLlmHttpTimeoutMs(),
       },
     );
 
@@ -217,7 +226,8 @@ async function callOpenRouterApi(prompt, llmConfig, nonInteractive = false) {
     enhancedError.isRateLimitError = responseStatus === 429;
     enhancedError.isModelNotFoundError =
       responseStatus === 404 && /model|not found/i.test(providerMessage || fallbackMessage);
-    enhancedError.isNetworkError = !!error?.request && !error?.response;
+    enhancedError.isNetworkError =
+      (!!error?.request && !error?.response) || isAxiosTimeoutError(error);
     enhancedError.isContextLimitError = isLikelyContextLimitError(enhancedError);
     throw enhancedError;
   }
@@ -261,6 +271,9 @@ async function generateLlmText(prompt, llmConfig, allowPromptSizing = false, non
   }
   if (typeof prompt !== "string") {
     throw new Error("Invalid prompt: prompt must be a string.");
+  }
+  if (prompt.trim().length === 0) {
+    throw new Error("Invalid prompt: prompt cannot be empty.");
   }
   console.log(
     `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,

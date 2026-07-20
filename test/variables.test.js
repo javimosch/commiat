@@ -39,3 +39,31 @@ test("promptForMissingVariableDescriptions skips prompts in non-interactive mode
   assert.equal(result, false);
   assert.equal(config.variables.scope, undefined);
 });
+
+test("getSystemVariableValues survives handler throw", async () => {
+  const gitPath = require.resolve("../src/utils/git");
+  const varsPath = require.resolve("../src/variables");
+  const origGit = require(gitPath);
+  require.cache[gitPath].exports = {
+    ...origGit,
+    getGitBranch: async () => {
+      throw new Error("git boom");
+    },
+    getGitBranchNumber: async () => {
+      throw new Error("number boom");
+    },
+  };
+  delete require.cache[varsPath];
+  const { getSystemVariableValues } = require("../src/variables");
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const values = await getSystemVariableValues();
+    assert.equal(values.gitBranch, "");
+    assert.equal(values.gitBranchNumber, "");
+  } finally {
+    console.warn = originalWarn;
+    require.cache[gitPath].exports = origGit;
+    delete require.cache[varsPath];
+  }
+});

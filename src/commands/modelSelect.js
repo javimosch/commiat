@@ -3,6 +3,7 @@ const inquirer = require("inquirer");
 
 const {
   CONFIG_KEY_OPENROUTER_MODEL,
+  getModelListHttpTimeoutMs,
 } = require("../core/constants");
 
 const { updateGlobalConfig } = require("../core/globalStore");
@@ -10,7 +11,9 @@ const { updateGlobalConfig } = require("../core/globalStore");
 async function selectModel() {
   console.log("Fetching OpenRouter models...");
   try {
-    const { data } = await axios.get("https://openrouter.ai/api/v1/models");
+    const { data } = await axios.get("https://openrouter.ai/api/v1/models", {
+      timeout: getModelListHttpTimeoutMs(),
+    });
     let models = (Array.isArray(data?.data) ? data.data : [])
       .filter(
         (m) =>
