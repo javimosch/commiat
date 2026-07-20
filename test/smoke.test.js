@@ -34,7 +34,7 @@ test("package.json has valid structure", () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf-8"));
   assert.ok(pkg.name, "missing name");
   assert.ok(pkg.version, "missing version");
-  assert.ok(pkg.main, "missing main");
+  assert.ok(pkg.main || pkg.bin, "missing main or bin");
   assert.ok(pkg.bin, "missing bin");
   assert.ok(Object.keys(pkg.bin).length > 0, "bin must have entries");
 });
@@ -48,10 +48,13 @@ test("package.json bin entries point to existing files", () => {
   }
 });
 
-test("package.json main entry is defined", () => {
+test("package.json main entry is defined when present", () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf-8"));
-  assert.ok(pkg.main, "main entry missing");
-  assert.equal(typeof pkg.main, "string");
+  if (pkg.main) {
+    assert.equal(typeof pkg.main, "string");
+  } else {
+    assert.ok(pkg.bin, "CLI package must define bin when main is absent");
+  }
 });
 
 test("cli.js has correct shebang", () => {

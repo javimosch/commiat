@@ -1,14 +1,14 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const axios = require("axios");
+const path = require("path");
 
 const inquirer = require("inquirer");
 
+const PROJECT_SRC = path.join(__dirname, "..", "src");
+
 function createStubModules(tmpDir) {
-  // Clear module cache so dependent modules re-evaluate
-  const cacheKeys = Object.keys(require.cache).filter((k) =>
-    k.includes("/commiat/src/"),
-  );
+  const cacheKeys = Object.keys(require.cache).filter((k) => k.startsWith(PROJECT_SRC));
   for (const key of cacheKeys) delete require.cache[key];
   process.env.GLOBAL_CONFIG_DIR = tmpDir;
 
@@ -29,9 +29,7 @@ function createStubModules(tmpDir) {
 
 function restoreModules(globalStore, origUpdate) {
   globalStore.updateGlobalConfig = origUpdate;
-  const keys = Object.keys(require.cache).filter((k) =>
-    k.includes("/commiat/src/"),
-  );
+  const keys = Object.keys(require.cache).filter((k) => k.startsWith(PROJECT_SRC));
   for (const key of keys) delete require.cache[key];
 }
 
@@ -69,6 +67,7 @@ test("configureOllama writes config when useOllama true", async () => {
 });
 
 test("selectModel handles API failure gracefully", async () => {
+  const { selectModel } = require("../src/commands/modelSelect");
   const getStub = axios.get;
   axios.get = async () => { throw new Error("Network error"); };
   const promptStub = inquirer.prompt;
@@ -86,6 +85,7 @@ test("selectModel handles API failure gracefully", async () => {
 });
 
 test("selectModel handles empty model list", async () => {
+  const { selectModel } = require("../src/commands/modelSelect");
   const getStub = axios.get;
   axios.get = async () => ({ data: { data: [] } });
   const promptStub = inquirer.prompt;
@@ -105,6 +105,10 @@ test("selectModel handles empty model list", async () => {
 test("selectModel updates config when model selected", async () => {
   const tmpDir = require("fs").mkdtempSync("/tmp/commiat-test-");
   try {
+    const getStub = axios.get;
+    axios.get = async () => ({
+      data: { data: [{ id: "custom/model", name: "Custom Model" }] },
+    });
     const promptStub = inquirer.prompt;
     inquirer.prompt = async () => ({ selected: "custom/model" });
 
@@ -113,6 +117,7 @@ test("selectModel updates config when model selected", async () => {
       await selectModel();
       assert.equal(updates["COMMIAT_OPENROUTER_MODEL"], "custom/model");
     } finally {
+      axios.get = getStub;
       inquirer.prompt = promptStub;
       restoreModules(globalStore, origUpdate);
     }

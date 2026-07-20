@@ -30,6 +30,17 @@ function extractFirstJsonArray(text) {
   return match ? match[0] : null;
 }
 
+function validateGroupShape(group, index) {
+  if (!group || typeof group !== "object" || Array.isArray(group)) {
+    throw new Error(`LLM group at index ${index} is not a valid object.`);
+  }
+  if (group.files !== undefined && !Array.isArray(group.files)) {
+    throw new Error(
+      `LLM group at index ${index} has invalid "files" field (expected array).`,
+    );
+  }
+}
+
 /**
  * Parse an LLM response into an array of group objects.
  * Accepts either a JSON array or a single JSON object (wrapped into an array).
@@ -50,8 +61,9 @@ function parseGroupsFromLlmResponse(llmText) {
       `LLM returned invalid JSON. Raw response: ${JSON.stringify(llmText)}. Parse error: ${parseError.message}`,
     );
   }
-  if (Array.isArray(parsed)) return parsed;
-  return [parsed];
+  const groups = Array.isArray(parsed) ? parsed : [parsed];
+  groups.forEach((group, index) => validateGroupShape(group, index));
+  return groups;
 }
 
 /**

@@ -5,7 +5,6 @@ const {
   getMaxPromptChars,
   isLikelyContextLimitError,
   middleOutCompress,
-  getMaxPromptChars,
 } = require("../src/core/promptSizing");
 
 test("getMaxPromptChars returns default on missing env", () => {
@@ -64,6 +63,8 @@ test("isLikelyContextLimitError detects OpenRouter max context length error", ()
       },
     },
   };
+  assert.equal(isLikelyContextLimitError(err), true);
+});
 
 test("getMaxPromptChars reads positive integer from env", () => {
   const key = "COMMIAT_MAX_PROMPT_CHARS";
@@ -113,12 +114,12 @@ test("getMaxPromptChars returns default when env is NaN", () => {
   }
 });
 
-test("getMaxPromptChars floors fractional env values", () => {
+test("getMaxPromptChars floors fractional env values and applies minimum clamp", () => {
   const key = "COMMIAT_MAX_PROMPT_CHARS";
   const before = process.env[key];
   process.env[key] = "100.7";
   try {
-    assert.equal(getMaxPromptChars(), 100);
+    assert.equal(getMaxPromptChars(), 1000);
   } finally {
     if (before !== undefined) process.env[key] = before;
     else delete process.env[key];

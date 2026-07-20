@@ -52,6 +52,21 @@ test("parseGroupsFromLlmResponse throws on null input", () => {
   );
 });
 
+test("parseGroupsFromLlmResponse throws on invalid files field", () => {
+  const txt = JSON.stringify([{ group: "A", files: "not-an-array" }]);
+  assert.throws(
+    () => parseGroupsFromLlmResponse(txt),
+    { message: /invalid "files" field/ },
+  );
+});
+
+test("parseGroupsFromLlmResponse throws on non-object group entry", () => {
+  assert.throws(
+    () => parseGroupsFromLlmResponse("[null]"),
+    { message: /not a valid object/ },
+  );
+});
+
 test("normalizeMultiCommitGroups filters to relevant files, first-group-wins overlaps, and adds unassigned", () => {
   const relevant = ["a.js", "b.js", "c.js"];
   const raw = [

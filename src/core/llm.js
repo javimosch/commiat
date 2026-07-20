@@ -85,16 +85,31 @@ function formatOpenRouterErrorForCli(error) {
   return `OpenRouter request failed${statusPart}${requestIdPart}`;
 }
 
+function createProviderError(provider, message, extras = {}) {
+  const err = new Error(message);
+  err.provider = provider;
+  for (const [key, value] of Object.entries(extras)) {
+    err[key] = value;
+  }
+  return err;
+}
+
 async function callOllamaApi(prompt, llmConfig) {
   if (!llmConfig || typeof llmConfig !== "object") {
-    throw new Error("Invalid Ollama configuration: llmConfig is required.");
+    throw createProviderError("ollama", "Invalid Ollama configuration: llmConfig is required.");
   }
   if (!llmConfig.baseUrl || typeof llmConfig.baseUrl !== "string") {
-    throw new Error("Invalid Ollama configuration: baseUrl must be a non-empty string.");
+    throw createProviderError(
+      "ollama",
+      "Invalid Ollama configuration: baseUrl must be a non-empty string.",
+    );
   }
   const baseUrl = llmConfig.baseUrl.replace(/\/+$/, "");
   if (!isValidUrl(baseUrl)) {
-    throw new Error(`Invalid Ollama base URL: "${baseUrl}". Must be a valid http(s) URL.`);
+    throw createProviderError(
+      "ollama",
+      `Invalid Ollama base URL: "${baseUrl}". Must be a valid http(s) URL.`,
+    );
   }
   const ollamaUrl = `${baseUrl}/api/chat`;
   console.log(`Sending request to Ollama: ${ollamaUrl}`);
@@ -116,21 +131,36 @@ async function callOllamaApi(prompt, llmConfig) {
     }
     throw new Error("Invalid Ollama API response structure.");
   } catch (error) {
-    const enhancedError = new Error(error.message || "Ollama API request failed");
-    enhancedError.stack = error.stack;
+    const fallbackMessage =
+      (error && typeof error === "object" && error.message) ||
+      (typeof error === "string" ? error : "") ||
+      "Ollama API request failed";
+    const enhancedError = new Error(fallbackMessage);
+    if (error && typeof error === "object" && error.stack) {
+      enhancedError.stack = error.stack;
+    }
     enhancedError.provider = "ollama";
     enhancedError.requestUrl = ollamaUrl;
-    enhancedError.responseStatus = error.response?.status;
-    enhancedError.responseData = error.response?.data;
-    enhancedError.isNetworkError = !!error.request && !error.response;
+    enhancedError.responseStatus = error?.response?.status;
+    enhancedError.responseData = error?.response?.data;
+    enhancedError.isNetworkError = !!error?.request && !error?.response;
     throw enhancedError;
   }
 }
 
 async function callOpenRouterApi(prompt, llmConfig, nonInteractive = false) {
+  if (!llmConfig || typeof llmConfig !== "object") {
+    throw createProviderError("openrouter", "Invalid OpenRouter configuration: llmConfig is required.");
+  }
+  if (!llmConfig.model || typeof llmConfig.model !== "string") {
+    throw createProviderError(
+      "openrouter",
+      "Invalid OpenRouter configuration: model must be a non-empty string.",
+    );
+  }
   const apiKey = await getApiKey(true, nonInteractive);
   if (!apiKey) {
-    throw new Error("Could not obtain OpenRouter API key.");
+    throw createProviderError("openrouter", "Could not obtain OpenRouter API key.");
   }
   console.log(`Sending request to OpenRouter: ${OPENROUTER_API_URL}`);
   try {
@@ -155,13 +185,16 @@ async function callOpenRouterApi(prompt, llmConfig, nonInteractive = false) {
     }
     throw new Error("Invalid OpenRouter API response structure.");
   } catch (error) {
-    const responseStatus = error.response?.status;
-    const responseData = error.response?.data;
+    const responseStatus = error?.response?.status ?? error?.responseStatus;
+    const responseData = error?.response?.data ?? error?.responseData;
     const providerMessage = extractOpenRouterProviderMessage(error);
-    const fallbackMessage = normalizeErrorText(error.message) || "OpenRouter API request failed";
+    const fallbackMessage =
+      normalizeErrorText(error?.message) || "OpenRouter API request failed";
 
     const enhancedError = new Error(providerMessage || fallbackMessage);
-    enhancedError.stack = error.stack;
+    if (error && typeof error === "object" && error.stack) {
+      enhancedError.stack = error.stack;
+    }
     enhancedError.provider = "openrouter";
     enhancedError.requestUrl = OPENROUTER_API_URL;
     enhancedError.responseStatus = responseStatus;
@@ -174,7 +207,7 @@ async function callOpenRouterApi(prompt, llmConfig, nonInteractive = false) {
     enhancedError.isRateLimitError = responseStatus === 429;
     enhancedError.isModelNotFoundError =
       responseStatus === 404 && /model|not found/i.test(providerMessage || fallbackMessage);
-    enhancedError.isNetworkError = !!error.request && !error.response;
+    enhancedError.isNetworkError = !!error?.request && !error?.response;
     enhancedError.isContextLimitError = isLikelyContextLimitError(enhancedError);
     throw enhancedError;
   }
@@ -213,6 +246,12 @@ async function callOpenRouterWithPromptSizing(prompt, llmConfig, nonInteractive 
 }
 
 async function generateLlmText(prompt, llmConfig, allowPromptSizing = false, nonInteractive = false) {
+  if (!llmConfig || typeof llmConfig !== "object") {
+    throw new Error("Invalid LLM configuration: llmConfig is required.");
+  }
+  if (typeof prompt !== "string") {
+    throw new Error("Invalid prompt: prompt must be a string.");
+  }
   console.log(
     `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,
   );
