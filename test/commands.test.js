@@ -195,3 +195,22 @@ test("selectModel updates config when model selected", async () => {
     require("fs").rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test("selectModel passes timeout option to axios.get", async () => {
+  const { selectModel } = require("../src/commands/modelSelect");
+  const getStub = axios.get;
+  let capturedConfig;
+  axios.get = async (_url, config) => {
+    capturedConfig = config;
+    return { data: { data: [] } };
+  };
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    await selectModel();
+    assert.ok(capturedConfig?.timeout > 0);
+  } finally {
+    axios.get = getStub;
+    console.log = originalLog;
+  }
+});

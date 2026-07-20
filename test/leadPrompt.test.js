@@ -93,3 +93,79 @@ test("promptForLead is no-op in non-interactive mode", async () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test("promptForLead trims email before webhook call", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "commiat-lead-"));
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const axios = require("axios");
+  const getStub = axios.get;
+  let capturedUrl;
+  axios.get = async (url) => {
+    capturedUrl = url;
+    return { status: 200 };
+  };
+
+  const promptStub = inquirer.prompt;
+  let callCount = 0;
+  inquirer.prompt = async () => {
+    callCount++;
+    if (callCount === 1) return { interested: true };
+    return { email: "  user@example.com  " };
+  };
+
+  const originalLog = console.log;
+  console.log = () => {};
+
+  try {
+    const { promptForLead } = freshLeadPrompt(tmpDir);
+    await promptForLead(false);
+    assert.ok(capturedUrl.includes("email=user%40example.com"));
+    assert.ok(!capturedUrl.includes("%20user"));
+  } finally {
+    axios.get = getStub;
+    inquirer.prompt = promptStub;
+    console.log = originalLog;
+    delete require.cache[GLOBAL_STORE_PATH];
+    delete process.env.GLOBAL_CONFIG_DIR;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("promptForLead handles webhook failure gracefully", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "commiat-lead-"));
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const axios = require("axios");
+  const getStub = axios.get;
+  axios.get = async () => {
+    throw new Error("webhook down");
+  };
+
+  const promptStub = inquirer.prompt;
+  let callCount = 0;
+  inquirer.prompt = async () => {
+    callCount++;
+    if (callCount === 1) return { interested: true };
+    return { email: "user@example.com" };
+  };
+
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  console.log = () => {};
+  console.warn = () => {};
+
+  try {
+    const { promptForLead } = freshLeadPrompt(tmpDir);
+    await promptForLead(false);
+    assert.ok(true, "promptForLead must not throw on webhook failure");
+  } finally {
+    axios.get = getStub;
+    inquirer.prompt = promptStub;
+    console.log = originalLog;
+    console.warn = originalWarn;
+    delete require.cache[GLOBAL_STORE_PATH];
+    delete process.env.GLOBAL_CONFIG_DIR;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

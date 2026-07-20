@@ -38,7 +38,7 @@ async function getSystemVariableValues() {
       const value = await handler();
       values[varName] = value;
     } catch (error) {
-      console.warn(`⚠️ Could not retrieve value for system variable {${varName}}: ${error.message}`);
+      console.warn(`⚠️ Could not retrieve value for system variable {${varName}}: ${error?.message ?? String(error)}`);
       values[varName] = '';
     }
   });

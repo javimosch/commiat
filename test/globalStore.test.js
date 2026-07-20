@@ -257,6 +257,46 @@ test("saveGlobalConfig ignores invalid config object", () => {
   });
 });
 
+test("saveGlobalConfig throws on write failure", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    const store = freshStore(tmp);
+    store.loadGlobalConfig();
+    const origWrite = fs.writeFileSync;
+    fs.writeFileSync = () => {
+      throw new Error("disk full");
+    };
+    try {
+      assert.throws(
+        () => store.saveGlobalConfig({ KEY: "value" }),
+        /Error writing global config file.*disk full/,
+      );
+    } finally {
+      fs.writeFileSync = origWrite;
+    }
+  });
+});
+
+test("saveState throws on write failure", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    const store = freshStore(tmp);
+    store.loadState();
+    const origWrite = fs.writeFileSync;
+    fs.writeFileSync = () => {
+      throw new Error("disk full");
+    };
+    try {
+      assert.throws(
+        () => store.saveState({ KEY: "value" }),
+        /Error writing global state file.*disk full/,
+      );
+    } finally {
+      fs.writeFileSync = origWrite;
+    }
+  });
+});
+
 test("saveState ignores invalid state object", () => {
   withTempHomedir((tmp) => {
     fs.mkdirSync(commiatDir(tmp), { recursive: true });

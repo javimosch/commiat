@@ -290,3 +290,65 @@ test("generateLlmText rejects non-string prompt", async () => {
     { message: /prompt must be a string/ },
   );
 });
+
+test("generateLlmText rejects empty prompt", async () => {
+  await assert.rejects(
+    () => generateLlmText("   ", { provider: "openrouter", model: "test" }),
+    { message: /prompt cannot be empty/ },
+  );
+});
+
+test("callOllamaApi classifies axios timeout as network error", async () => {
+  const postStub = axios.post;
+  axios.post = async () => {
+    const err = new Error("timeout of 120000ms exceeded");
+    err.code = "ECONNABORTED";
+    throw err;
+  };
+  try {
+    await callOllamaApi("prompt", { baseUrl: "http://localhost:11434", model: "llama3" });
+    assert.fail("Should have thrown");
+  } catch (e) {
+    assert.equal(e.provider, "ollama");
+    assert.equal(e.isNetworkError, true);
+  } finally {
+    axios.post = postStub;
+  }
+});
+
+test("callOpenRouterApi classifies axios timeout as network error", async () => {
+  const prevKey = process.env[CONFIG_KEY_API_KEY];
+  process.env[CONFIG_KEY_API_KEY] = "test-key";
+  const postStub = axios.post;
+  axios.post = async () => {
+    const err = new Error("timeout of 120000ms exceeded");
+    err.code = "ECONNABORTED";
+    throw err;
+  };
+  try {
+    await callOpenRouterApi("prompt", { model: "test" });
+    assert.fail("Should have thrown");
+  } catch (e) {
+    assert.equal(e.provider, "openrouter");
+    assert.equal(e.isNetworkError, true);
+  } finally {
+    axios.post = postStub;
+    if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
+    else process.env[CONFIG_KEY_API_KEY] = prevKey;
+  }
+});
+
+test("callOllamaApi passes timeout option to axios", async () => {
+  const postStub = axios.post;
+  let capturedConfig;
+  axios.post = async (_url, _body, config) => {
+    capturedConfig = config;
+    return { data: { message: { content: "ok" } } };
+  };
+  try {
+    await callOllamaApi("prompt", { baseUrl: "http://localhost:11434", model: "llama3" });
+    assert.ok(capturedConfig?.timeout > 0);
+  } finally {
+    axios.post = postStub;
+  }
+});
