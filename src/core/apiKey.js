@@ -39,7 +39,12 @@ async function promptForApiKey() {
     console.error("API key cannot be empty.");
     return null;
   }
-  updateGlobalConfig(CONFIG_KEY_API_KEY, trimmedKey);
+  try {
+    updateGlobalConfig(CONFIG_KEY_API_KEY, trimmedKey);
+  } catch (error) {
+    console.error(`❌ Failed to save API key: ${error?.message ?? String(error)}`);
+    return null;
+  }
   console.log(`API Key saved to ${GLOBAL_CONFIG_PATH}`);
   return trimmedKey;
 }

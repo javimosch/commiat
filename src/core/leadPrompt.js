@@ -111,7 +111,12 @@ async function promptForLead(nonInteractive = false) {
     if (newState[STATE_KEY_LEAD_PROMPTED]) {
       delete newState[STATE_KEY_LEAD_PROMPTED];
     }
-    saveState(newState);
+    try {
+      saveState(newState);
+    } catch (saveError) {
+      console.warn("Could not persist lead prompt state.");
+      await fsLogError(new Error(`Lead prompt state save failed: ${saveError?.message ?? String(saveError)}`));
+    }
     console.log("\n---\n");
   }
 }

@@ -65,8 +65,9 @@ async function getStagedFiles(gitInstance) {
     const summary = await g.diffSummary(["--staged"]);
     if (!summary || !Array.isArray(summary.files)) return [];
     return summary.files.map(f => f.file).filter(Boolean);
-  } catch {
-    return [];
+  } catch (error) {
+    const msg = error?.message ?? String(error);
+    throw new Error(`Failed to list staged files: ${msg}`);
   }
 }
 
@@ -76,8 +77,9 @@ async function getUntrackedFiles(gitInstance) {
     const output = await g.raw(["ls-files", "--others", "--exclude-standard"]);
     if (!output || typeof output !== "string" || output.trim().length === 0) return [];
     return output.trim().split('\n').filter(f => f.length > 0);
-  } catch {
-    return [];
+  } catch (error) {
+    const msg = error?.message ?? String(error);
+    throw new Error(`Failed to list untracked files: ${msg}`);
   }
 }
 

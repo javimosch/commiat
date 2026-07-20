@@ -132,6 +132,42 @@ test("promptForLead trims email before webhook call", async () => {
   }
 });
 
+test("promptForLead survives saveState failure in finally block", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "commiat-lead-"));
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const globalStore = require("../src/core/globalStore");
+  const origSaveState = globalStore.saveState;
+  globalStore.saveState = () => {
+    throw new Error("disk full");
+  };
+
+  const promptStub = inquirer.prompt;
+  inquirer.prompt = async () => ({ interested: false });
+
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  console.log = () => {};
+  console.warn = () => {};
+
+  try {
+    delete require.cache[GLOBAL_STORE_PATH];
+    process.env.GLOBAL_CONFIG_DIR = tmpDir;
+    const { promptForLead } = require("../src/core/leadPrompt");
+    await promptForLead(false);
+    assert.ok(true, "promptForLead must not throw when saveState fails");
+  } finally {
+    globalStore.saveState = origSaveState;
+    inquirer.prompt = promptStub;
+    console.log = originalLog;
+    console.warn = originalWarn;
+    delete require.cache[GLOBAL_STORE_PATH];
+    delete require.cache[require.resolve("../src/core/leadPrompt")];
+    delete process.env.GLOBAL_CONFIG_DIR;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("promptForLead handles webhook failure gracefully", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "commiat-lead-"));
   fs.mkdirSync(tmpDir, { recursive: true });

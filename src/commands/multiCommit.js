@@ -133,6 +133,11 @@ async function handleMultiCommit(options) {
       );
       if (configWasUpdated) {
         localConfig = await localConfigManager.loadConfig(options.nonInteractive);
+        if (!localConfig) {
+          throw new Error(
+            `Failed to reload ${localConfigManager.LOCAL_CONFIG_FILENAME} after updating variable descriptions.`,
+          );
+        }
       }
     }
     const systemVarValues = await variableProcessor.getSystemVariableValues();

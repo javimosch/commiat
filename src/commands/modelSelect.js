@@ -58,7 +58,12 @@ async function selectModel() {
     }
 
     if (typeof selected === "string" && selected.trim().length > 0) {
-      updateGlobalConfig(CONFIG_KEY_OPENROUTER_MODEL, selected);
+      try {
+        updateGlobalConfig(CONFIG_KEY_OPENROUTER_MODEL, selected);
+      } catch (error) {
+        console.error(`Failed to save selected model: ${error?.message ?? String(error)}`);
+        throw error;
+      }
       console.log(`\n✅ Set OpenRouter model to: ${selected}`);
     }
   } catch (error) {

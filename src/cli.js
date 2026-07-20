@@ -89,11 +89,21 @@ program
         process.exit(0);
       }
       if (setMultiDefault) {
-        updateGlobalConfig(CONFIG_KEY_DEFAULT_MULTI, "true");
+        try {
+          updateGlobalConfig(CONFIG_KEY_DEFAULT_MULTI, "true");
+        } catch (error) {
+          console.error(`\n❌ Error: ${error?.message ?? String(error)}`);
+          process.exit(1);
+        }
         console.log(`✅ --multi is now enabled as default.`);
         console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
       } else {
-        updateGlobalConfig(CONFIG_KEY_DEFAULT_MULTI, "false");
+        try {
+          updateGlobalConfig(CONFIG_KEY_DEFAULT_MULTI, "false");
+        } catch (error) {
+          console.error(`\n❌ Error: ${error?.message ?? String(error)}`);
+          process.exit(1);
+        }
         console.log(`⚪ --multi is now disabled as default.`);
         console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
       }
