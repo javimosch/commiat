@@ -26,6 +26,7 @@ function filterStageableFiles(files) {
 }
 
 function buildGroupingPrompt(diff) {
+  const diffText = typeof diff === "string" ? diff : "";
   return `You are an expert software engineer analyzing Git changes.
 
 Your job is to group changes into logical commits based on the following staged diff.
@@ -37,7 +38,7 @@ IMPORTANT:
 
 Staged diff:
 \n\`\`\`diff
-${diff}
+${diffText}
 \`\`\`\n
 Return a JSON array of objects with:
 - "group": short name for the group

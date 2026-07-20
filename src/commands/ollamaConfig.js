@@ -102,7 +102,12 @@ async function configureOllama() {
     nextConfig[CONFIG_KEY_OLLAMA_BASE_URL] = finalBaseUrl;
     nextConfig[CONFIG_KEY_OLLAMA_MODEL] = finalModel;
     nextConfig[CONFIG_KEY_OLLAMA_FALLBACK] = finalFallback ? "true" : "false";
-    saveGlobalConfig(nextConfig);
+    try {
+      saveGlobalConfig(nextConfig);
+    } catch (error) {
+      console.error(`❌ Failed to save Ollama configuration: ${error?.message ?? String(error)}`);
+      throw error;
+    }
 
     console.log(
       `✅ Ollama enabled. Base URL: ${finalBaseUrl}, Model: ${finalModel}, Fallback: ${finalFallback}.`,
@@ -119,7 +124,12 @@ async function configureOllama() {
   const nextConfig = { ...loadGlobalConfig() };
   nextConfig[CONFIG_KEY_USE_OLLAMA] = "false";
   nextConfig[CONFIG_KEY_OLLAMA_FALLBACK] = "false";
-  saveGlobalConfig(nextConfig);
+  try {
+    saveGlobalConfig(nextConfig);
+  } catch (error) {
+    console.error(`❌ Failed to save Ollama configuration: ${error?.message ?? String(error)}`);
+    throw error;
+  }
   console.log(`⚪ Ollama disabled. Commiat will use OpenRouter (if configured).`);
   console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
 }

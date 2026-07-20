@@ -71,3 +71,17 @@ test("runGitOperation returns operation result", async () => {
   const result = await runGitOperation("noop", async () => "ok");
   assert.equal(result, "ok");
 });
+
+test("runGitOperation rejects non-function operation", async () => {
+  await assert.rejects(
+    () => runGitOperation("Failed", null),
+    { message: /operation must be a function/ },
+  );
+});
+
+test("runGitOperation rejects empty description", async () => {
+  await assert.rejects(
+    () => runGitOperation("  ", async () => "ok"),
+    { message: /description must be a non-empty string/ },
+  );
+});

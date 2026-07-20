@@ -102,3 +102,9 @@ test("buildCommitPrompt skips non-string or empty variable descriptions", () => 
   assert.ok(!prompt.includes("broken"));
   assert.ok(!prompt.includes("empty"));
 });
+
+test("buildCommitPrompt treats non-string diff as empty", () => {
+  const prompt = buildCommitPrompt(null, { format: "{type}: {msg}" }, {});
+  assert.ok(prompt.includes("```diff\n\n```"));
+  assert.ok(!prompt.includes("null"));
+});

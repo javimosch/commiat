@@ -11,6 +11,13 @@ const SYSTEM_VARIABLE_HANDLERS = {
 
 const VARIABLE_REGEX = /\{([a-zA-Z0-9_]+)\}/g;
 
+const UNSAFE_VARIABLE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function isSafeVariableKey(key) {
+  return typeof key === "string" && key.length > 0 && !UNSAFE_VARIABLE_KEYS.has(key);
+}
+
+
 /**
  * Extracts all variable names (e.g., "type", "context") from a format string.
  * @param {string} format - The format string (e.g., "{type} ({context})").
@@ -95,7 +102,21 @@ async function promptForMissingVariableDescriptions(variables, config, nonIntera
     try {
       const answers = await inquirer.prompt(questions);
       for (const variable in answers) {
-        config.variables[variable] = answers[variable].trim();
+        if (!isSafeVariableKey(variable)) {
+          console.warn(`⚠️ Skipping unsafe variable key "${variable}".`);
+          continue;
+        }
+        const answer = answers[variable];
+        if (typeof answer !== "string") {
+          console.warn(`⚠️ Skipping invalid description for {${variable}} (expected string).`);
+          continue;
+        }
+        const trimmedAnswer = answer.trim();
+        if (!trimmedAnswer) {
+          console.warn(`⚠️ Skipping empty description for {${variable}}.`);
+          continue;
+        }
+        config.variables[variable] = trimmedAnswer;
         configUpdated = true;
       }
     } catch {

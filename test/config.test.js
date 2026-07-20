@@ -145,6 +145,23 @@ test("validateConfig returns false when variables contains number key", () => {
   assert.equal(result, true);
 });
 
+test("validateConfig returns false when variable key is unsafe", () => {
+  const variables = Object.create(null);
+  variables.__proto__ = "polluted";
+  const result = validateConfig({
+    format: "{type}({scope}): {msg}",
+    variables,
+  });
+  assert.equal(result, false);
+  assert.equal(
+    validateConfig({
+      format: "{type}({scope}): {msg}",
+      variables: { constructor: "polluted" },
+    }),
+    false,
+  );
+});
+
 test("saveConfig throws for invalid config", async () => {
   await assert.rejects(
     async () => { await saveConfig({ format: "", variables: {} }); },

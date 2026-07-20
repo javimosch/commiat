@@ -137,6 +137,8 @@ function validateConfig(config) {
     if (typeof config.format !== 'string' || config.format.trim() === '') return false;
     if (typeof config.variables !== 'object' || config.variables === null || Array.isArray(config.variables)) return false;
     for (const key in config.variables) {
+        if (!Object.prototype.hasOwnProperty.call(config.variables, key)) continue;
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') return false;
         if (typeof config.variables[key] !== 'string' || config.variables[key].trim() === '') return false;
     }
     return true;

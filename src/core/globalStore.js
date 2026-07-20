@@ -52,6 +52,10 @@ function loadGlobalConfig() {
   }
 }
 
+function isValidConfigKey(key) {
+  return typeof key === "string" && key.trim().length > 0 && !/[\r\n=]/.test(key);
+}
+
 function saveGlobalConfig(configObj) {
   if (!configObj || typeof configObj !== "object" || Array.isArray(configObj)) {
     throw new Error("Invalid config object provided to saveGlobalConfig");
@@ -60,19 +64,21 @@ function saveGlobalConfig(configObj) {
   ensureGlobalConfigDirExists();
   let fileContent = "";
   for (const key in configObj) {
-    if (Object.prototype.hasOwnProperty.call(configObj, key)) {
-      const value = configObj[key];
-      if (value == null) continue;
-      const formattedValue =
-        value === true
-          ? "true"
-          : value === false
-            ? "false"
-            : /\s|#|"|'|=/.test(String(value))
-              ? `"${String(value).replace(/"/g, '\\"')}"`
-              : String(value);
-      fileContent += `${key}=${formattedValue}\n`;
+    if (!Object.prototype.hasOwnProperty.call(configObj, key)) continue;
+    if (!isValidConfigKey(key)) {
+      throw new Error(`Invalid config key "${String(key)}": keys must be non-empty strings without newlines or "=".`);
     }
+    const value = configObj[key];
+    if (value == null) continue;
+    const formattedValue =
+      value === true
+        ? "true"
+        : value === false
+          ? "false"
+          : /\s|#|"|'|=/.test(String(value))
+            ? `"${String(value).replace(/"/g, '\\"')}"`
+            : String(value);
+    fileContent += `${key}=${formattedValue}\n`;
   }
   try {
     fs.writeFileSync(cfgPath, fileContent.trim(), "utf8");
@@ -119,11 +125,13 @@ function saveState(stateObj) {
   ensureGlobalConfigDirExists();
   let fileContent = "";
   for (const key in stateObj) {
-    if (Object.prototype.hasOwnProperty.call(stateObj, key)) {
-      const value = stateObj[key];
-      if (value == null) continue;
-      fileContent += `${key}=${String(value)}\n`;
+    if (!Object.prototype.hasOwnProperty.call(stateObj, key)) continue;
+    if (!isValidConfigKey(key)) {
+      throw new Error(`Invalid state key "${String(key)}": keys must be non-empty strings without newlines or "=".`);
     }
+    const value = stateObj[key];
+    if (value == null) continue;
+    fileContent += `${key}=${String(value)}\n`;
   }
   try {
     fs.writeFileSync(statePath, fileContent.trim(), "utf8");

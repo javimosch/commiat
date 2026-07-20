@@ -156,6 +156,38 @@ test("configureOllama handles interrupted prompt gracefully", async () => {
   }
 });
 
+test("configureOllama handles saveGlobalConfig failure when disabling", async () => {
+  const tmpDir = require("fs").mkdtempSync("/tmp/commiat-test-");
+  try {
+    const promptStub = inquirer.prompt;
+    inquirer.prompt = async () => ({ useOllama: false });
+
+    const cacheKeys = Object.keys(require.cache).filter((k) => k.startsWith(PROJECT_SRC));
+    for (const key of cacheKeys) delete require.cache[key];
+    process.env.GLOBAL_CONFIG_DIR = tmpDir;
+
+    const globalStore = require("../src/core/globalStore");
+    const origSave = globalStore.saveGlobalConfig;
+    globalStore.saveGlobalConfig = () => {
+      throw new Error("disk full");
+    };
+
+    const { configureOllama } = require("../src/commands/ollamaConfig");
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      await assert.rejects(() => configureOllama(), /disk full/);
+    } finally {
+      globalStore.saveGlobalConfig = origSave;
+      inquirer.prompt = promptStub;
+      console.error = originalError;
+      for (const key of cacheKeys) delete require.cache[key];
+    }
+  } finally {
+    require("fs").rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("selectModel handles interrupted prompt gracefully", async () => {
   const { selectModel } = require("../src/commands/modelSelect");
   const getStub = axios.get;

@@ -5,22 +5,35 @@ const {
   GLOBAL_CONFIG_PATH,
 } = require("./globalStore");
 
+function parseEditorCommand(editorEnv) {
+  if (editorEnv == null || typeof editorEnv !== "string") {
+    return null;
+  }
+  const trimmed = editorEnv.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return null;
+  return { command: parts[0], args: parts.slice(1) };
+}
+
 function openConfigInEditor() {
   ensureGlobalConfigFileExists();
-  const editor = process.env.EDITOR || "nano";
-  if (!editor || typeof editor !== "string" || editor.trim() === "") {
+  const parsed = parseEditorCommand(process.env.EDITOR || "nano");
+  if (!parsed) {
     console.error("\n❌ No editor configured. Set the EDITOR environment variable.");
     process.exit(1);
   }
-  console.log(`Opening global config ${GLOBAL_CONFIG_PATH} in ${editor}...`);
-  const child = spawn(editor, [GLOBAL_CONFIG_PATH], {
+  const { command, args } = parsed;
+  console.log(`Opening global config ${GLOBAL_CONFIG_PATH} in ${command}...`);
+  const child = spawn(command, [...args, GLOBAL_CONFIG_PATH], {
     stdio: "inherit",
     detached: true,
+    shell: false,
   });
   child.on("error", (err) => {
-    console.error(`\n❌ Failed to start editor '${editor}': ${err.message}`);
+    console.error(`\n❌ Failed to start editor '${command}': ${err.message}`);
     console.error(
-      `Please ensure '${editor}' is installed and in your PATH, or set the EDITOR environment variable.`,
+      `Please ensure '${command}' is installed and in your PATH, or set the EDITOR environment variable.`,
     );
     process.exit(1);
   });
@@ -35,4 +48,5 @@ function openConfigInEditor() {
 
 module.exports = {
   openConfigInEditor,
+  parseEditorCommand,
 };
