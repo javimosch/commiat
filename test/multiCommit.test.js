@@ -103,3 +103,10 @@ test("normalizeMultiCommitGroups skips empty groups and creates (Unassigned) gro
   assert.equal(groups[0].group, "(Unassigned)");
   assert.deepEqual(unassignedFiles.sort(), ["a.js", "b.js"]);
 });
+
+test("normalizeMultiCommitGroups throws when relevantFiles is not an array", () => {
+  assert.throws(
+    () => normalizeMultiCommitGroups([], "not-an-array"),
+    /relevantFiles must be an array/,
+  );
+});

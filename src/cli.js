@@ -41,6 +41,14 @@ program
   )
   .option("--non-interactive", "Disable all prompts and auto-accept generated commit messages")
   .action(async (options) => {
+    if (options.prefix != null && typeof options.prefix !== "string") {
+      console.error("\n❌ Error: --prefix must be a string.");
+      process.exit(1);
+    }
+    if (options.affix != null && typeof options.affix !== "string") {
+      console.error("\n❌ Error: --affix must be a string.");
+      process.exit(1);
+    }
     if (!process.stdout.isTTY) {
       options.nonInteractive = true;
     }

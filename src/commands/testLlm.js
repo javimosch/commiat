@@ -10,7 +10,13 @@ const { loadGlobalConfig } = require("../core/globalStore");
 
 async function testLlmCompletion() {
   console.log("🧪 Testing LLM completion...");
-  const llmConfig = getLlmProviderConfig();
+  let llmConfig;
+  try {
+    llmConfig = getLlmProviderConfig();
+  } catch (configError) {
+    console.error(`❌ Invalid LLM configuration: ${configError.message}`);
+    process.exit(1);
+  }
   if (!llmConfig || !llmConfig.provider) {
     console.error("❌ No LLM provider configured. Run 'commiat configure' first.");
     process.exit(1);

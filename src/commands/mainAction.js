@@ -18,6 +18,15 @@ const { handleMultiCommit } = require("./multiCommit");
 
 const git = simpleGit();
 
+async function runGitOperation(description, operation) {
+  try {
+    return await operation();
+  } catch (error) {
+    const msg = error?.message ?? String(error);
+    throw new Error(`${description}: ${msg}`);
+  }
+}
+
 async function mainAction(options) {
   if (!options || typeof options !== "object") {
     throw new Error("Invalid options provided to mainAction.");
@@ -36,15 +45,17 @@ async function mainAction(options) {
 
     if (options.addAll) {
       console.log("Staging all changes (`git add .`)...");
-      await git.add(".");
+      await runGitOperation("Failed to stage all changes", () => git.add("."));
       console.log("Changes staged.");
     } else {
-      const stagedSummary = await git.diffSummary(["--staged"]);
+      const stagedSummary = await runGitOperation("Failed to inspect staged changes", () =>
+        git.diffSummary(["--staged"]),
+      );
       const stagedFiles = stagedSummary?.files;
       if (!Array.isArray(stagedFiles) || stagedFiles.length === 0) {
         if (options.nonInteractive) {
           console.log("No changes staged. Auto-staging all changes...");
-          await git.add(".");
+          await runGitOperation("Failed to stage all changes", () => git.add("."));
           console.log("Changes staged.");
         } else {
           const { shouldStageAll } = await inquirer.prompt([
@@ -57,7 +68,7 @@ async function mainAction(options) {
           ]);
           if (shouldStageAll) {
             console.log("Staging all changes (`git add .`)...");
-            await git.add(".");
+            await runGitOperation("Failed to stage all changes", () => git.add("."));
             console.log("Changes staged.");
           } else {
             console.log("No changes staged. Aborting.");
@@ -114,7 +125,9 @@ async function mainAction(options) {
         console.log("Committing...");
       }
 
-      await git.commit(finalCommitMessage, undefined, commitOptions);
+      await runGitOperation("Failed to commit changes", () =>
+        git.commit(finalCommitMessage, undefined, commitOptions),
+      );
       console.log("\n✅ Commit successful!");
       await promptForLead(options.nonInteractive);
     } else {
