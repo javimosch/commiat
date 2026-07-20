@@ -46,7 +46,10 @@ program
     }
     try {
       await mainAction(options);
-    } catch {
+    } catch (error) {
+      if (error && error.message !== "No staged changes found to commit.") {
+        console.error(`\n❌ Error: ${error.message}`);
+      }
       process.exit(1);
     }
   });

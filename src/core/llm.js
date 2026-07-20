@@ -14,6 +14,16 @@ const {
   middleOutCompress,
 } = require("./promptSizing");
 
+function isValidUrl(str) {
+  if (!str || typeof str !== "string") return false;
+  try {
+    const url = new URL(str);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function normalizeErrorText(value) {
   if (typeof value !== "string") return "";
   return value.trim();
@@ -76,7 +86,17 @@ function formatOpenRouterErrorForCli(error) {
 }
 
 async function callOllamaApi(prompt, llmConfig) {
-  const ollamaUrl = `${llmConfig.baseUrl}/api/chat`;
+  if (!llmConfig || typeof llmConfig !== "object") {
+    throw new Error("Invalid Ollama configuration: llmConfig is required.");
+  }
+  if (!llmConfig.baseUrl || typeof llmConfig.baseUrl !== "string") {
+    throw new Error("Invalid Ollama configuration: baseUrl must be a non-empty string.");
+  }
+  const baseUrl = llmConfig.baseUrl.replace(/\/+$/, "");
+  if (!isValidUrl(baseUrl)) {
+    throw new Error(`Invalid Ollama base URL: "${baseUrl}". Must be a valid http(s) URL.`);
+  }
+  const ollamaUrl = `${baseUrl}/api/chat`;
   console.log(`Sending request to Ollama: ${ollamaUrl}`);
   try {
     const response = await axios.post(

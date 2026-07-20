@@ -24,14 +24,18 @@ function getLlmProviderConfig() {
     (!envUseOllama && configUseOllama === "true");
 
   if (useOllama) {
-    const baseUrl =
+    const baseUrl = (
       process.env[CONFIG_KEY_OLLAMA_BASE_URL] ||
       globalConfig[CONFIG_KEY_OLLAMA_BASE_URL] ||
-      DEFAULT_OLLAMA_BASE_URL;
+      DEFAULT_OLLAMA_BASE_URL
+    ).replace(/\/+$/, "");
     const model =
       process.env[CONFIG_KEY_OLLAMA_MODEL] ||
       globalConfig[CONFIG_KEY_OLLAMA_MODEL] ||
       DEFAULT_OLLAMA_MODEL;
+    if (!model || typeof model !== "string") {
+      throw new Error("Ollama model must be a non-empty string.");
+    }
     return {
       provider: "ollama",
       baseUrl,
@@ -44,6 +48,9 @@ function getLlmProviderConfig() {
     process.env[CONFIG_KEY_OPENROUTER_MODEL] ||
     globalConfig[CONFIG_KEY_OPENROUTER_MODEL] ||
     DEFAULT_OPENROUTER_MODEL;
+  if (!model || typeof model !== "string") {
+    throw new Error("OpenRouter model must be a non-empty string.");
+  }
   return { provider: "openrouter", model, fallbackEnabled: false };
 }
 
