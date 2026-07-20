@@ -26,29 +26,45 @@ async function loadConfig(nonInteractive = false) {
         return null;
       }
 
-      const { shouldCreate } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'shouldCreate',
-          message: `No ${LOCAL_CONFIG_FILENAME} found. Would you like to create one now?`,
-          default: true,
-        },
-      ]);
+      let shouldCreate;
+      try {
+        ({ shouldCreate } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'shouldCreate',
+            message: `No ${LOCAL_CONFIG_FILENAME} found. Would you like to create one now?`,
+            default: true,
+          },
+        ]));
+      } catch {
+        console.warn('\n⚠️ Config creation prompt interrupted. Proceeding without local format.');
+        return null;
+      }
 
       if (!shouldCreate) {
         console.log('Proceeding without a local format configuration.');
         return null;
       }
 
-      const { format } = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'format',
-          message: 'Enter your desired commit message format (Core variables: {type}, {msg}, {gitBranch}. You can add custom variables):',
-          default: DEFAULT_FORMAT,
-          validate: (input) => (input.trim().length > 0 ? true : 'Format cannot be empty.'),
-        },
-      ]);
+      let format;
+      try {
+        ({ format } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'format',
+            message: 'Enter your desired commit message format (Core variables: {type}, {msg}, {gitBranch}. You can add custom variables):',
+            default: DEFAULT_FORMAT,
+            validate: (input) => (input.trim().length > 0 ? true : 'Format cannot be empty.'),
+          },
+        ]));
+      } catch {
+        console.warn('\n⚠️ Format prompt interrupted. Proceeding without local format.');
+        return null;
+      }
+      if (typeof format !== 'string' || format.trim().length === 0) {
+        console.warn('Invalid format input. Proceeding without local format.');
+        return null;
+      }
 
       const initialConfig = {
         format: format.trim(),

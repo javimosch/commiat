@@ -6,6 +6,7 @@ const {
   getGitBranchNumber,
   getStagedFiles,
   getRelevantFiles,
+  getUntrackedFiles,
   stageFiles,
   extractNumberFromString,
 } = require("../src/utils/git");
@@ -109,5 +110,33 @@ test("getRelevantFiles works with null options", async () => {
 
 test("getRelevantFiles works with undefined options", async () => {
   const files = await getRelevantFiles(undefined);
+  assert.deepEqual(files, []);
+});
+
+test("getRelevantFiles throws for non-object options", async () => {
+  await assert.rejects(
+    () => getRelevantFiles("invalid"),
+    { message: /options must be an object/ },
+  );
+  await assert.rejects(
+    () => getRelevantFiles([]),
+    { message: /options must be an object/ },
+  );
+});
+
+test("getRelevantFiles includes untracked files when requested", async () => {
+  const mockGit = {
+    diffSummary: async () => ({ files: [{ file: "staged.js" }] }),
+    raw: async () => "untracked.js\n",
+  };
+  const files = await getRelevantFiles({ untracked: true }, mockGit);
+  assert.deepEqual(files.sort(), ["staged.js", "untracked.js"].sort());
+});
+
+test("getUntrackedFiles returns empty array on git error", async () => {
+  const mockGit = {
+    raw: async () => { throw new Error("git error"); },
+  };
+  const files = await getUntrackedFiles(mockGit);
   assert.deepEqual(files, []);
 });

@@ -74,14 +74,20 @@ program
   .option("-m, --multi", "Set --multi as default mode")
   .action(async (options) => {
     if (options.multi) {
-      const { setMultiDefault } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "setMultiDefault",
-          message: "Set --multi as the default mode for commiat?",
-          default: true,
-        },
-      ]);
+      let setMultiDefault;
+      try {
+        ({ setMultiDefault } = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "setMultiDefault",
+            message: "Set --multi as the default mode for commiat?",
+            default: true,
+          },
+        ]));
+      } catch {
+        console.warn("\n⚠️ Config prompt interrupted. No changes saved.");
+        process.exit(0);
+      }
       if (setMultiDefault) {
         updateGlobalConfig(CONFIG_KEY_DEFAULT_MULTI, "true");
         console.log(`✅ --multi is now enabled as default.`);
