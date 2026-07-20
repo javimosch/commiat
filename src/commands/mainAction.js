@@ -95,6 +95,7 @@ async function mainAction(options) {
       diff,
       localConfig,
       systemVarValues,
+      options.nonInteractive,
     );
 
     const messageToPrompt = applyPrefixAffixToMessage(initialCommitMessage, options);
