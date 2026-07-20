@@ -40,7 +40,8 @@ async function mainAction(options) {
       console.log("Changes staged.");
     } else {
       const stagedSummary = await git.diffSummary(["--staged"]);
-      if (stagedSummary.files.length === 0) {
+      const stagedFiles = stagedSummary?.files;
+      if (!Array.isArray(stagedFiles) || stagedFiles.length === 0) {
         if (options.nonInteractive) {
           console.log("No changes staged. Auto-staging all changes...");
           await git.add(".");
@@ -64,7 +65,7 @@ async function mainAction(options) {
           }
         }
       } else {
-        console.log(`${stagedSummary.files.length} file(s) already staged.`);
+        console.log(`${stagedFiles.length} file(s) already staged.`);
       }
     }
 

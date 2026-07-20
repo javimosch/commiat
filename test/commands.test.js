@@ -102,6 +102,37 @@ test("selectModel handles empty model list", async () => {
   }
 });
 
+test("selectModel handles malformed model entries", async () => {
+  const tmpDir = require("fs").mkdtempSync("/tmp/commiat-test-");
+  try {
+    const getStub = axios.get;
+    axios.get = async () => ({
+      data: {
+        data: [
+          { id: "valid/model", name: "Valid" },
+          { id: "", name: "Empty id" },
+          null,
+          { name: "No id" },
+        ],
+      },
+    });
+    const promptStub = inquirer.prompt;
+    inquirer.prompt = async () => ({ selected: "valid/model" });
+
+    const { selectModel, globalStore, origUpdate, updates } = createStubModules(tmpDir);
+    try {
+      await selectModel();
+      assert.equal(updates["COMMIAT_OPENROUTER_MODEL"], "valid/model");
+    } finally {
+      axios.get = getStub;
+      inquirer.prompt = promptStub;
+      restoreModules(globalStore, origUpdate);
+    }
+  } finally {
+    require("fs").rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("selectModel updates config when model selected", async () => {
   const tmpDir = require("fs").mkdtempSync("/tmp/commiat-test-");
   try {

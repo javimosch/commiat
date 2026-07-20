@@ -198,6 +198,12 @@ async function handleMultiCommit(options) {
           await gitUtils.unstageAll();
           await git.add(g.files);
           const finalCommitMessage = await promptUser(g.suggestedMessage, true);
+          if (!finalCommitMessage) {
+            console.log("\n❌ Commit cancelled (empty message). Unstaging remaining changes...");
+            allSuccessful = false;
+            await gitUtils.unstageAll();
+            break;
+          }
           await git.commit(finalCommitMessage, undefined, commitOptions);
           console.log("✅ Group commit successful!");
         }

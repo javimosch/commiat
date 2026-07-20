@@ -240,6 +240,56 @@ test("getLlmProviderConfig fallback is always false for openrouter even when fal
   clearMockConfig();
 });
 
+test("getLlmProviderConfig strips trailing slashes from ollama baseUrl", () => {
+  setMockConfig({
+    COMMIAT_USE_OLLAMA: "true",
+    COMMIAT_OLLAMA_BASE_URL: "http://ollama.local:11434///",
+  });
+  const cfg = getLlmProviderConfig();
+  assert.equal(cfg.baseUrl, "http://ollama.local:11434");
+  clearMockConfig();
+});
+
+test("getLlmProviderConfig throws on invalid ollama baseUrl", () => {
+  setMockConfig({
+    COMMIAT_USE_OLLAMA: "true",
+    COMMIAT_OLLAMA_BASE_URL: "not-a-url",
+  });
+  assert.throws(
+    () => getLlmProviderConfig(),
+    /Invalid Ollama base URL/,
+  );
+  clearMockConfig();
+});
+
+test("getLlmProviderConfig throws on empty ollama model", () => {
+  setMockConfig({
+    COMMIAT_USE_OLLAMA: "true",
+    COMMIAT_OLLAMA_MODEL: "   ",
+  });
+  assert.throws(
+    () => getLlmProviderConfig(),
+    /Ollama model must be a non-empty string/,
+  );
+  clearMockConfig();
+});
+
+test("getLlmProviderConfig throws on empty openrouter model", () => {
+  setMockConfig({ COMMIAT_OPENROUTER_MODEL: "  " });
+  assert.throws(
+    () => getLlmProviderConfig(),
+    /OpenRouter model must be a non-empty string/,
+  );
+  clearMockConfig();
+});
+
+test("getLlmProviderConfig trims openrouter model whitespace", () => {
+  setMockConfig({ COMMIAT_OPENROUTER_MODEL: "  openai/gpt-4o  " });
+  const cfg = getLlmProviderConfig();
+  assert.equal(cfg.model, "openai/gpt-4o");
+  clearMockConfig();
+});
+
 // === Tests for getDefaultMultiConfig ===
 
 test("getDefaultMultiConfig returns false when no config", () => {

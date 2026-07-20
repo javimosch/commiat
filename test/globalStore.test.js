@@ -245,6 +245,40 @@ test("ensureGlobalConfigFileExists creates config file", () => {
   });
 });
 
+test("saveGlobalConfig ignores invalid config object", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    fs.writeFileSync(commiatConfig(tmp), "KEEP=1\n");
+    const store = freshStore(tmp);
+    store.saveGlobalConfig(null);
+    store.saveGlobalConfig([]);
+    const cfg = freshStore(tmp).loadGlobalConfig();
+    assert.equal(cfg.KEEP, "1");
+  });
+});
+
+test("saveState ignores invalid state object", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    const store = freshStore(tmp);
+    store.updateState("KEY", "value");
+    store.saveState(null);
+    store.saveState("not-an-object");
+    const state = freshStore(tmp).loadState();
+    assert.equal(state.KEY, "value");
+  });
+});
+
+test("fsLogError logs string errors", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    freshStore(tmp).fsLogError("plain string failure");
+    const logPath = path.join(commiatDir(tmp), "error.log");
+    const log = fs.readFileSync(logPath, "utf-8");
+    assert.ok(log.includes("plain string failure"));
+  });
+});
+
 test("module exports all expected members", () => {
   const store = freshStore(os.tmpdir());
   const expected = [
