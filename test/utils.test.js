@@ -74,12 +74,14 @@ test("getStagedFiles returns files from diffSummary", async () => {
   assert.deepEqual(files, ["a.js", "b.js"]);
 });
 
-test("getStagedFiles returns empty array on git error", async () => {
+test("getStagedFiles throws on git error", async () => {
   const mockGit = {
     diffSummary: async () => { throw new Error("git error"); },
   };
-  const files = await getStagedFiles(mockGit);
-  assert.deepEqual(files, []);
+  await assert.rejects(
+    () => getStagedFiles(mockGit),
+    { message: /Failed to list staged files: git error/ },
+  );
 });
 
 test("stageFiles does not throw on null files", async () => {
@@ -152,10 +154,12 @@ test("getRelevantFiles includes untracked files when requested", async () => {
   assert.deepEqual(files.sort(), ["staged.js", "untracked.js"].sort());
 });
 
-test("getUntrackedFiles returns empty array on git error", async () => {
+test("getUntrackedFiles throws on git error", async () => {
   const mockGit = {
     raw: async () => { throw new Error("git error"); },
   };
-  const files = await getUntrackedFiles(mockGit);
-  assert.deepEqual(files, []);
+  await assert.rejects(
+    () => getUntrackedFiles(mockGit),
+    { message: /Failed to list untracked files: git error/ },
+  );
 });

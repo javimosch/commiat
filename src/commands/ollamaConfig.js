@@ -11,7 +11,7 @@ const {
 
 const {
   loadGlobalConfig,
-  updateGlobalConfig,
+  saveGlobalConfig,
   GLOBAL_CONFIG_PATH,
 } = require("../core/globalStore");
 
@@ -97,10 +97,12 @@ async function configureOllama() {
     const finalModel = modelInput || DEFAULT_OLLAMA_MODEL;
     const finalFallback = answers.fallback;
 
-    updateGlobalConfig(CONFIG_KEY_USE_OLLAMA, "true");
-    updateGlobalConfig(CONFIG_KEY_OLLAMA_BASE_URL, finalBaseUrl);
-    updateGlobalConfig(CONFIG_KEY_OLLAMA_MODEL, finalModel);
-    updateGlobalConfig(CONFIG_KEY_OLLAMA_FALLBACK, finalFallback ? "true" : "false");
+    const nextConfig = { ...loadGlobalConfig() };
+    nextConfig[CONFIG_KEY_USE_OLLAMA] = "true";
+    nextConfig[CONFIG_KEY_OLLAMA_BASE_URL] = finalBaseUrl;
+    nextConfig[CONFIG_KEY_OLLAMA_MODEL] = finalModel;
+    nextConfig[CONFIG_KEY_OLLAMA_FALLBACK] = finalFallback ? "true" : "false";
+    saveGlobalConfig(nextConfig);
 
     console.log(
       `✅ Ollama enabled. Base URL: ${finalBaseUrl}, Model: ${finalModel}, Fallback: ${finalFallback}.`,
@@ -114,8 +116,10 @@ async function configureOllama() {
     return;
   }
 
-  updateGlobalConfig(CONFIG_KEY_USE_OLLAMA, "false");
-  updateGlobalConfig(CONFIG_KEY_OLLAMA_FALLBACK, "false");
+  const nextConfig = { ...loadGlobalConfig() };
+  nextConfig[CONFIG_KEY_USE_OLLAMA] = "false";
+  nextConfig[CONFIG_KEY_OLLAMA_FALLBACK] = "false";
+  saveGlobalConfig(nextConfig);
   console.log(`⚪ Ollama disabled. Commiat will use OpenRouter (if configured).`);
   console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
 }

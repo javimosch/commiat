@@ -245,13 +245,13 @@ test("ensureGlobalConfigFileExists creates config file", () => {
   });
 });
 
-test("saveGlobalConfig ignores invalid config object", () => {
+test("saveGlobalConfig throws on invalid config object", () => {
   withTempHomedir((tmp) => {
     fs.mkdirSync(commiatDir(tmp), { recursive: true });
     fs.writeFileSync(commiatConfig(tmp), "KEEP=1\n");
     const store = freshStore(tmp);
-    store.saveGlobalConfig(null);
-    store.saveGlobalConfig([]);
+    assert.throws(() => store.saveGlobalConfig(null), /Invalid config object/);
+    assert.throws(() => store.saveGlobalConfig([]), /Invalid config object/);
     const cfg = freshStore(tmp).loadGlobalConfig();
     assert.equal(cfg.KEEP, "1");
   });
@@ -297,15 +297,33 @@ test("saveState throws on write failure", () => {
   });
 });
 
-test("saveState ignores invalid state object", () => {
+test("saveState throws on invalid state object", () => {
   withTempHomedir((tmp) => {
     fs.mkdirSync(commiatDir(tmp), { recursive: true });
     const store = freshStore(tmp);
     store.updateState("KEY", "value");
-    store.saveState(null);
-    store.saveState("not-an-object");
+    assert.throws(() => store.saveState(null), /Invalid state object/);
+    assert.throws(() => store.saveState("not-an-object"), /Invalid state object/);
     const state = freshStore(tmp).loadState();
     assert.equal(state.KEY, "value");
+  });
+});
+
+test("updateGlobalConfig throws on invalid key", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    const store = freshStore(tmp);
+    assert.throws(() => store.updateGlobalConfig(""), /Invalid key/);
+    assert.throws(() => store.updateGlobalConfig(null), /Invalid key/);
+  });
+});
+
+test("updateState throws on invalid key", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    const store = freshStore(tmp);
+    assert.throws(() => store.updateState(""), /Invalid key/);
+    assert.throws(() => store.updateState(null), /Invalid key/);
   });
 });
 

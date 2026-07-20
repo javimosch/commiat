@@ -54,8 +54,7 @@ function loadGlobalConfig() {
 
 function saveGlobalConfig(configObj) {
   if (!configObj || typeof configObj !== "object" || Array.isArray(configObj)) {
-    console.error("Invalid config object provided to saveGlobalConfig");
-    return;
+    throw new Error("Invalid config object provided to saveGlobalConfig");
   }
   const cfgPath = getGlobalConfigPath();
   ensureGlobalConfigDirExists();
@@ -85,8 +84,7 @@ function saveGlobalConfig(configObj) {
 
 function updateGlobalConfig(key, value) {
   if (!key || typeof key !== "string" || key.trim().length === 0) {
-    console.error("Invalid key provided to updateGlobalConfig");
-    return;
+    throw new Error("Invalid key provided to updateGlobalConfig");
   }
   const currentConfig = loadGlobalConfig();
   currentConfig[key] = value;
@@ -115,8 +113,7 @@ function loadState() {
 
 function saveState(stateObj) {
   if (!stateObj || typeof stateObj !== "object" || Array.isArray(stateObj)) {
-    console.error("Invalid state object provided to saveState");
-    return;
+    throw new Error("Invalid state object provided to saveState");
   }
   const statePath = getGlobalStatePath();
   ensureGlobalConfigDirExists();
@@ -138,8 +135,7 @@ function saveState(stateObj) {
 
 function updateState(key, value) {
   if (!key || typeof key !== "string" || key.trim().length === 0) {
-    console.error("Invalid key provided to updateState");
-    return;
+    throw new Error("Invalid key provided to updateState");
   }
   const currentState = loadState();
   currentState[key] = value;
