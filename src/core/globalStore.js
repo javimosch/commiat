@@ -48,6 +48,10 @@ function loadGlobalConfig() {
 }
 
 function saveGlobalConfig(configObj) {
+  if (!configObj || typeof configObj !== "object" || Array.isArray(configObj)) {
+    console.error("Invalid config object provided to saveGlobalConfig");
+    return;
+  }
   const cfgPath = getGlobalConfigPath();
   ensureGlobalConfigDirExists();
   let fileContent = "";
@@ -104,6 +108,10 @@ function loadState() {
 }
 
 function saveState(stateObj) {
+  if (!stateObj || typeof stateObj !== "object" || Array.isArray(stateObj)) {
+    console.error("Invalid state object provided to saveState");
+    return;
+  }
   const statePath = getGlobalStatePath();
   ensureGlobalConfigDirExists();
   let fileContent = "";
@@ -135,15 +143,21 @@ async function fsLogError(error) {
   try {
     const errorLogPath = path.join(getGlobalConfigDir(), "error.log");
     ensureGlobalConfigDirExists();
-    const stack = error.stack ? `\n${error.stack}` : "";
-    const providerInfo = error.provider ? `\nProvider: ${error.provider}` : "";
-    const requestUrlInfo = error.requestUrl ? `\nRequest URL: ${error.requestUrl}` : "";
-    const responseStatusInfo = error.responseStatus ? `\nResponse Status: ${error.responseStatus}` : "";
-    const responseDataInfo = error.responseData
-      ? `\nResponse Data: ${JSON.stringify(error.responseData)}`
+    const normalized =
+      error instanceof Error
+        ? error
+        : new Error(typeof error === "string" ? error : String(error ?? "Unknown error"));
+    const stack = normalized.stack ? `\n${normalized.stack}` : "";
+    const providerInfo = normalized.provider ? `\nProvider: ${normalized.provider}` : "";
+    const requestUrlInfo = normalized.requestUrl ? `\nRequest URL: ${normalized.requestUrl}` : "";
+    const responseStatusInfo = normalized.responseStatus
+      ? `\nResponse Status: ${normalized.responseStatus}`
+      : "";
+    const responseDataInfo = normalized.responseData
+      ? `\nResponse Data: ${JSON.stringify(normalized.responseData)}`
       : "";
 
-    const logMessage = `[${new Date().toISOString()}] ${error.message}${providerInfo}${requestUrlInfo}${responseStatusInfo}${responseDataInfo}${stack}\n\n`;
+    const logMessage = `[${new Date().toISOString()}] ${normalized.message}${providerInfo}${requestUrlInfo}${responseStatusInfo}${responseDataInfo}${stack}\n\n`;
     fs.writeFileSync(errorLogPath, logMessage, { flag: "a" });
   } catch {
     // Log failure must never propagate — it may mask the original error

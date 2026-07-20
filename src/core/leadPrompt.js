@@ -36,10 +36,13 @@ async function promptForLead(nonInteractive = false) {
   const oneWeek = 7 * 24 * 60 * 60 * 1000;
 
   if (lastPromptedAt) {
-    const lastPromptDate = new Date(parseInt(lastPromptedAt, 10));
-    const now = new Date();
-    if (now - lastPromptDate < oneWeek) {
-      return;
+    const parsed = parseInt(lastPromptedAt, 10);
+    if (Number.isFinite(parsed)) {
+      const lastPromptDate = new Date(parsed);
+      const now = new Date();
+      if (now - lastPromptDate < oneWeek) {
+        return;
+      }
     }
   }
 

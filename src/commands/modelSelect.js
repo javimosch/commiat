@@ -11,12 +11,18 @@ async function selectModel() {
   console.log("Fetching OpenRouter models...");
   try {
     const { data } = await axios.get("https://openrouter.ai/api/v1/models");
-    let models = (data?.data || [])
+    let models = (Array.isArray(data?.data) ? data.data : [])
+      .filter(
+        (m) =>
+          m &&
+          typeof m === "object" &&
+          typeof m.id === "string" &&
+          m.id.trim().length > 0,
+      )
       .map((m) => ({
-        name: `${m.name} - ${m.id}`,
-        value: m.id,
-      }))
-      .filter((m) => m.name && m.value);
+        name: `${m.name || m.id} - ${m.id}`,
+        value: m.id.trim(),
+      }));
 
     if (models.length === 0) {
       console.log("No models available.");

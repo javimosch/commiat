@@ -201,6 +201,40 @@ test("callOpenRouterWithPromptSizing handles empty prompt", async () => {
   }
 });
 
+test("callOllamaApi rejects response with empty content", async () => {
+  const postStub = axios.post;
+  axios.post = async () => ({
+    data: { message: { content: "   " } },
+  });
+  try {
+    await callOllamaApi("prompt", { baseUrl: "http://localhost:11434", model: "llama3" });
+    assert.fail("Should have thrown");
+  } catch (e) {
+    assert.match(e.message, /Invalid Ollama API response structure/);
+  } finally {
+    axios.post = postStub;
+  }
+});
+
+test("callOpenRouterApi rejects response with missing content", async () => {
+  const prevKey = process.env[CONFIG_KEY_API_KEY];
+  process.env[CONFIG_KEY_API_KEY] = "test-key";
+  const postStub = axios.post;
+  axios.post = async () => ({
+    data: { choices: [{ message: {} }] },
+  });
+  try {
+    await callOpenRouterApi("prompt", { model: "test" });
+    assert.fail("Should have thrown");
+  } catch (e) {
+    assert.match(e.message, /Invalid OpenRouter API response structure/);
+  } finally {
+    axios.post = postStub;
+    if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
+    else process.env[CONFIG_KEY_API_KEY] = prevKey;
+  }
+});
+
 test("callOpenRouterWithPromptSizing uses middleOutCompress", async () => {
   const prevKey = process.env[CONFIG_KEY_API_KEY];
   process.env[CONFIG_KEY_API_KEY] = "test-key";

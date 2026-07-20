@@ -123,8 +123,9 @@ async function callOllamaApi(prompt, llmConfig) {
       },
       { headers: { "Content-Type": "application/json" } },
     );
-    if (response.data && response.data.message && response.data.message.content) {
-      let message = response.data.message.content.trim();
+    const ollamaContent = response.data?.message?.content;
+    if (typeof ollamaContent === "string" && ollamaContent.trim().length > 0) {
+      let message = ollamaContent.trim();
       message = message.replace(/^```(?:git|commit|text)?\s*/, "").replace(/```\s*$/, "");
       message = message.replace(/^["']|["']$/g, "");
       return message.trim();
@@ -177,8 +178,9 @@ async function callOpenRouterApi(prompt, llmConfig, nonInteractive = false) {
       },
     );
 
-    if (response.data && response.data.choices && response.data.choices.length > 0) {
-      let message = response.data.choices[0].message.content.trim();
+    const openRouterContent = response.data?.choices?.[0]?.message?.content;
+    if (typeof openRouterContent === "string" && openRouterContent.trim().length > 0) {
+      let message = openRouterContent.trim();
       message = message.replace(/^```(?:git|commit|text)?\s*/, "").replace(/```\s*$/, "");
       message = message.replace(/^["']|["']$/g, "");
       return message.trim();
