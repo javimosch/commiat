@@ -70,9 +70,10 @@ async function getStagedFiles(gitInstance) {
   }
 }
 
-async function getUntrackedFiles() {
+async function getUntrackedFiles(gitInstance) {
+  const g = (gitInstance && typeof gitInstance.raw === "function") ? gitInstance : git;
   try {
-    const output = await git.raw(["ls-files", "--others", "--exclude-standard"]);
+    const output = await g.raw(["ls-files", "--others", "--exclude-standard"]);
     if (!output || typeof output !== "string" || output.trim().length === 0) return [];
     return output.trim().split('\n').filter(f => f.length > 0);
   } catch {
@@ -80,10 +81,13 @@ async function getUntrackedFiles() {
   }
 }
 
-async function getRelevantFiles(options) {
-  let files = await getStagedFiles();
+async function getRelevantFiles(options, gitInstance) {
+  if (options != null && (typeof options !== "object" || Array.isArray(options))) {
+    throw new Error("getRelevantFiles: options must be an object or null/undefined.");
+  }
+  let files = await getStagedFiles(gitInstance);
   if (options && options.untracked) {
-    const untracked = await getUntrackedFiles();
+    const untracked = await getUntrackedFiles(gitInstance);
     files = [...new Set([...files, ...untracked])];
   }
   return files;
@@ -99,22 +103,24 @@ async function stageFiles(files, gitInstance) {
   }
 }
 
-async function unstageAll() {
+async function unstageAll(gitInstance) {
+  const g = (gitInstance && typeof gitInstance.reset === "function") ? gitInstance : git;
   try {
-    const staged = await getStagedFiles();
+    const staged = await getStagedFiles(gitInstance);
     if (staged.length > 0) {
-      await git.reset(["--", ...staged]);
+      await g.reset(["--", ...staged]);
     }
   } catch (error) {
     console.error("❌ Failed to unstage files:", error?.message ?? error);
   }
 }
 
-async function getFileStatus() {
+async function getFileStatus(gitInstance) {
+  const g = (gitInstance && typeof gitInstance.status === "function") ? gitInstance : git;
   try {
-    return await git.status();
+    return await g.status();
   } catch (error) {
-    console.error("Failed to get git status:", error.message);
+    console.error("Failed to get git status:", error?.message ?? error);
     return { files: [] };
   }
 }

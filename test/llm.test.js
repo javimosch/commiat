@@ -235,6 +235,20 @@ test("callOpenRouterApi rejects response with missing content", async () => {
   }
 });
 
+test("callOllamaApi rejects empty model", async () => {
+  await assert.rejects(
+    () => callOllamaApi("prompt", { baseUrl: "http://localhost:11434", model: "  " }),
+    { message: /model must be a non-empty string/ },
+  );
+});
+
+test("callOllamaApi rejects missing model", async () => {
+  await assert.rejects(
+    () => callOllamaApi("prompt", { baseUrl: "http://localhost:11434" }),
+    { message: /model must be a non-empty string/ },
+  );
+});
+
 test("callOpenRouterWithPromptSizing uses middleOutCompress", async () => {
   const prevKey = process.env[CONFIG_KEY_API_KEY];
   process.env[CONFIG_KEY_API_KEY] = "test-key";

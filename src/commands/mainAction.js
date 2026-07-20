@@ -58,14 +58,20 @@ async function mainAction(options) {
           await runGitOperation("Failed to stage all changes", () => git.add("."));
           console.log("Changes staged.");
         } else {
-          const { shouldStageAll } = await inquirer.prompt([
-            {
-              type: "confirm",
-              name: "shouldStageAll",
-              message: "No changes staged. Stage all changes now? (git add .)",
-              default: true,
-            },
-          ]);
+          let shouldStageAll;
+          try {
+            ({ shouldStageAll } = await inquirer.prompt([
+              {
+                type: "confirm",
+                name: "shouldStageAll",
+                message: "No changes staged. Stage all changes now? (git add .)",
+                default: true,
+              },
+            ]));
+          } catch {
+            console.log("\n⚠️ Prompt interrupted. No changes staged. Aborting.");
+            process.exit(0);
+          }
           if (shouldStageAll) {
             console.log("Staging all changes (`git add .`)...");
             await runGitOperation("Failed to stage all changes", () => git.add("."));

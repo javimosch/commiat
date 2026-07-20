@@ -111,13 +111,21 @@ async function callOllamaApi(prompt, llmConfig) {
       `Invalid Ollama base URL: "${baseUrl}". Must be a valid http(s) URL.`,
     );
   }
+  const model =
+    typeof llmConfig.model === "string" ? llmConfig.model.trim() : "";
+  if (!model) {
+    throw createProviderError(
+      "ollama",
+      "Invalid Ollama configuration: model must be a non-empty string.",
+    );
+  }
   const ollamaUrl = `${baseUrl}/api/chat`;
   console.log(`Sending request to Ollama: ${ollamaUrl}`);
   try {
     const response = await axios.post(
       ollamaUrl,
       {
-        model: llmConfig.model,
+        model,
         messages: [{ role: "user", content: prompt }],
         stream: false,
       },

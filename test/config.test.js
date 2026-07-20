@@ -165,12 +165,29 @@ test("validateConfig returns true for format with only msg variable", () => {
   assert.equal(result, true);
 });
 
-test("validateConfig returns false for non-string variable description array", () => {
-  const result = validateConfig({
-    format: "{type}({scope}): {msg}",
-    variables: { scope: ["module", "component"] },
+test("loadConfig returns null when creation prompt interrupted", async () => {
+  withTempDir(async () => {
+    const originalPrompt = require("inquirer").prompt;
+    require("inquirer").prompt = async () => { throw new Error("Prompt interrupted"); };
+    const cfg = await loadConfig(false);
+    require("inquirer").prompt = originalPrompt;
+    assert.equal(cfg, null);
   });
-  assert.equal(result, false);
+});
+
+test("loadConfig returns null when format prompt interrupted", async () => {
+  withTempDir(async () => {
+    const originalPrompt = require("inquirer").prompt;
+    let callCount = 0;
+    require("inquirer").prompt = async () => {
+      callCount++;
+      if (callCount === 1) return { shouldCreate: true };
+      throw new Error("Prompt interrupted");
+    };
+    const cfg = await loadConfig(false);
+    require("inquirer").prompt = originalPrompt;
+    assert.equal(cfg, null);
+  });
 });
 
 

@@ -29,26 +29,32 @@ async function selectModel() {
       return;
     }
 
-    const { selected } = await inquirer.prompt([
-      {
-        type: "autocomplete",
-        name: "selected",
-        message: "Search and select a model (type to filter):",
-        source: (answers, input) => {
-          input = input || "";
-          return models
-            .filter(
-              (m) =>
-                m.name.toLowerCase().includes(input.toLowerCase()) ||
-                m.value.toLowerCase().includes(input.toLowerCase()),
-            )
-            .slice(0, 20);
+    let selected;
+    try {
+      ({ selected } = await inquirer.prompt([
+        {
+          type: "autocomplete",
+          name: "selected",
+          message: "Search and select a model (type to filter):",
+          source: (answers, input) => {
+            input = input || "";
+            return models
+              .filter(
+                (m) =>
+                  m.name.toLowerCase().includes(input.toLowerCase()) ||
+                  m.value.toLowerCase().includes(input.toLowerCase()),
+              )
+              .slice(0, 20);
+          },
+          pageSize: 7,
         },
-        pageSize: 7,
-      },
-    ]);
+      ]));
+    } catch {
+      console.warn("\n⚠️ Model selection prompt interrupted. No changes saved.");
+      return;
+    }
 
-    if (selected) {
+    if (typeof selected === "string" && selected.trim().length > 0) {
       updateGlobalConfig(CONFIG_KEY_OPENROUTER_MODEL, selected);
       console.log(`\n✅ Set OpenRouter model to: ${selected}`);
     }

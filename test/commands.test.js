@@ -133,6 +133,45 @@ test("selectModel handles malformed model entries", async () => {
   }
 });
 
+test("configureOllama handles interrupted prompt gracefully", async () => {
+  const tmpDir = require("fs").mkdtempSync("/tmp/commiat-test-");
+  try {
+    const promptStub = inquirer.prompt;
+    inquirer.prompt = async () => { throw new Error("Prompt interrupted"); };
+
+    const { configureOllama, globalStore, origUpdate, updates } = createStubModules(tmpDir);
+    try {
+      await configureOllama();
+      assert.equal(Object.keys(updates).length, 0);
+    } finally {
+      inquirer.prompt = promptStub;
+      restoreModules(globalStore, origUpdate);
+    }
+  } finally {
+    require("fs").rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("selectModel handles interrupted prompt gracefully", async () => {
+  const { selectModel } = require("../src/commands/modelSelect");
+  const getStub = axios.get;
+  axios.get = async () => ({
+    data: { data: [{ id: "valid/model", name: "Valid" }] },
+  });
+  const promptStub = inquirer.prompt;
+  inquirer.prompt = async () => { throw new Error("Prompt interrupted"); };
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    await selectModel();
+    assert.ok(true, "selectModel must not throw on interrupted prompt");
+  } finally {
+    axios.get = getStub;
+    inquirer.prompt = promptStub;
+    console.warn = originalWarn;
+  }
+});
+
 test("selectModel updates config when model selected", async () => {
   const tmpDir = require("fs").mkdtempSync("/tmp/commiat-test-");
   try {
