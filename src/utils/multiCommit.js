@@ -74,6 +74,9 @@ function parseGroupsFromLlmResponse(llmText) {
  * - appends a synthetic (Unassigned) group for any remaining files
  */
 function normalizeMultiCommitGroups(rawGroups, relevantFiles) {
+  if (relevantFiles != null && !Array.isArray(relevantFiles)) {
+    throw new Error('relevantFiles must be an array of file paths.');
+  }
   const relevantSet = new Set((relevantFiles || []).map((f) => String(f)));
   const assigned = new Set();
   const warnings = [];

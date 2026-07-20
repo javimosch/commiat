@@ -21,8 +21,13 @@ function getGlobalStatePath() {
 
 function ensureGlobalConfigDirExists() {
   const dir = getGlobalConfigDir();
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (error) {
+    const msg = error?.message ?? String(error);
+    throw new Error(`Failed to create global config directory "${dir}": ${msg}`);
   }
 }
 

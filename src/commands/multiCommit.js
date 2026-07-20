@@ -62,6 +62,9 @@ async function handleMultiCommit(options) {
     }
 
     const diff = await git.diff(["--staged"]);
+    if (typeof diff !== "string") {
+      throw new Error("Failed to get staged diff: unexpected response from git.");
+    }
     console.log("\nAnalyzing changes to group them logically...");
 
     const llmConfig = getLlmProviderConfig();
@@ -129,7 +132,17 @@ async function handleMultiCommit(options) {
       `\nGenerating suggested commit messages for ${normalizedGroups.length} group(s)...`,
     );
     for (const g of normalizedGroups) {
+      if (!Array.isArray(g.files) || g.files.length === 0) {
+        console.warn(`⚠️ Skipping group "${g.group}" with no valid files.`);
+        g.suggestedMessage = "";
+        continue;
+      }
       const groupDiff = await git.diff(["--staged", "--", ...g.files]);
+      if (typeof groupDiff !== "string") {
+        console.warn(`⚠️ Could not get diff for group "${g.group}". Skipping message generation.`);
+        g.suggestedMessage = "";
+        continue;
+      }
       const msg = await generateCommitMessage(groupDiff, localConfig, systemVarValues, options.nonInteractive);
       g.suggestedMessage = applyPrefixAffixToMessage(msg, options);
     }
@@ -146,39 +159,44 @@ async function handleMultiCommit(options) {
     };
 
     const selectGroups = async (groups) => {
-      const { action } = await inquirer.prompt([
-        {
-          type: "list",
-          name: "action",
-          message: "What would you like to do?",
-          choices: [
-            { name: "✅ Commit all planned groups", value: "all" },
-            { name: "🧩 Select groups to commit", value: "select" },
-            { name: "🚪 Leave (discard plan; unstage remaining changes)", value: "leave" },
-          ],
-          default: "select",
-        },
-      ]);
+      try {
+        const { action } = await inquirer.prompt([
+          {
+            type: "list",
+            name: "action",
+            message: "What would you like to do?",
+            choices: [
+              { name: "✅ Commit all planned groups", value: "all" },
+              { name: "🧩 Select groups to commit", value: "select" },
+              { name: "🚪 Leave (discard plan; unstage remaining changes)", value: "leave" },
+            ],
+            default: "select",
+          },
+        ]);
 
-      if (action === "leave") return { selectedIndexes: [], leave: true };
-      if (action === "all") {
-        return { selectedIndexes: groups.map((_, i) => i), leave: false };
+        if (action === "leave") return { selectedIndexes: [], leave: true };
+        if (action === "all") {
+          return { selectedIndexes: groups.map((_, i) => i), leave: false };
+        }
+
+        const { selectedIndexes } = await inquirer.prompt([
+          {
+            type: "checkbox",
+            name: "selectedIndexes",
+            message: "Select which groups to commit now:",
+            choices: groups.map((g, i) => ({
+              name: `#${i + 1} ${g.group} (${g.files.length} files)`,
+              value: i,
+              checked: true,
+            })),
+          },
+        ]);
+
+        return { selectedIndexes: selectedIndexes || [], leave: false };
+      } catch {
+        console.warn("\n⚠️ Multi-commit prompt interrupted. Leaving session.");
+        return { selectedIndexes: [], leave: true };
       }
-
-      const { selectedIndexes } = await inquirer.prompt([
-        {
-          type: "checkbox",
-          name: "selectedIndexes",
-          message: "Select which groups to commit now:",
-          choices: groups.map((g, i) => ({
-            name: `#${i + 1} ${g.group} (${g.files.length} files)`,
-            value: i,
-            checked: true,
-          })),
-        },
-      ]);
-
-      return { selectedIndexes: selectedIndexes || [], leave: false };
     };
 
     const commitOptions = {};

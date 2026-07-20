@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
   applyPrefixAffixToMessage,
   substituteVariablesInMessage,
+  buildCommitPrompt,
 } = require("../src/core/commitMessage");
 
 test("applyPrefixAffixToMessage adds prefix and affix to first line", () => {
@@ -83,4 +84,21 @@ test("substituteVariablesInMessage handles values with special regex characters"
   const vals = { path: "/user/{id}/profile" };
   const result = substituteVariablesInMessage(msg, vals);
   assert.ok(result.includes("/user/{id}/profile"));
+});
+
+test("buildCommitPrompt tolerates localConfig without variables object", () => {
+  const prompt = buildCommitPrompt("diff content", { format: "{type}: {msg}" }, {});
+  assert.ok(prompt.includes("diff content"));
+  assert.ok(!prompt.includes("Variable descriptions"));
+});
+
+test("buildCommitPrompt skips non-string or empty variable descriptions", () => {
+  const localConfig = {
+    format: "{type}: {component}",
+    variables: { component: "auth module", empty: "  ", broken: 42 },
+  };
+  const prompt = buildCommitPrompt("diff content", localConfig, {});
+  assert.ok(prompt.includes("{component}: auth module"));
+  assert.ok(!prompt.includes("broken"));
+  assert.ok(!prompt.includes("empty"));
 });

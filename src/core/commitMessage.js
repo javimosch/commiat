@@ -65,11 +65,21 @@ function buildCommitPrompt(diff, localConfig, systemVarValues) {
   const format = localConfig?.format || DEFAULT_CONVENTIONAL_FORMAT;
   prompt += `The desired commit message format is: "${format}"\n`;
 
-  if (localConfig && Object.keys(localConfig.variables).length > 0) {
+  const customVariables =
+    localConfig &&
+    localConfig.variables &&
+    typeof localConfig.variables === "object" &&
+    !Array.isArray(localConfig.variables)
+      ? localConfig.variables
+      : null;
+  if (customVariables && Object.keys(customVariables).length > 0) {
     prompt += "Variable descriptions (use these to fill the format placeholders):\n";
-    for (const variable in localConfig.variables) {
+    for (const variable in customVariables) {
+      if (!Object.prototype.hasOwnProperty.call(customVariables, variable)) continue;
+      const description = customVariables[variable];
+      if (typeof description !== "string" || description.trim() === "") continue;
       if (format.includes(`{${variable}}`)) {
-        prompt += `- {${variable}}: ${localConfig.variables[variable]}\n`;
+        prompt += `- {${variable}}: ${description}\n`;
       }
     }
   }
@@ -184,5 +194,6 @@ async function generateCommitMessage(diff, localConfig, systemVarValues, nonInte
 module.exports = {
   applyPrefixAffixToMessage,
   substituteVariablesInMessage,
+  buildCommitPrompt,
   generateCommitMessage,
 };
