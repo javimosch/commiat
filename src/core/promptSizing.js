@@ -1,8 +1,9 @@
 function getMaxPromptChars() {
   const raw = process.env.COMMIAT_MAX_PROMPT_CHARS;
+  if (raw === undefined || raw === null) return 200000;
   const n = Number(raw);
-  if (Number.isFinite(n) && n > 0) return Math.floor(n);
-  return 200000;
+  if (!Number.isFinite(n) || n <= 0) return 200000;
+  return Math.min(Math.max(Math.floor(n), 1000), 1000000);
 }
 
 function isLikelyContextLimitError(error) {
@@ -24,12 +25,13 @@ function isLikelyContextLimitError(error) {
 
 function middleOutCompress(text, maxChars) {
   const s = String(text ?? "");
-  if (s.length <= maxChars) return s;
+  const budget = Number.isFinite(maxChars) && maxChars > 0 ? Math.floor(maxChars) : 200000;
+  if (s.length <= budget) return s;
 
   const marker = "\n... (prompt middle-out compressed) ...\n";
-  const budget = Math.max(0, maxChars - marker.length);
-  const headLen = Math.floor(budget * 0.6);
-  const tailLen = Math.max(0, budget - headLen);
+  const remaining = Math.max(0, budget - marker.length);
+  const headLen = Math.floor(remaining * 0.6);
+  const tailLen = Math.max(0, remaining - headLen);
 
   const head = s.slice(0, headLen);
   const tail = s.slice(s.length - tailLen);

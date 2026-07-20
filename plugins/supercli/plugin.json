@@ -4,7 +4,9 @@
   "description": "Wrap commiat CLI with passthrough support",
   "source": "https://www.npmjs.com/package/commiat",
   "checks": [
-    { "type": "binary", "name": "commiat" }
+    { "type": "binary", "name": "commiat" },
+    { "type": "binary", "name": "cm" },
+    { "type": "env", "name": "COMMIAT_OPENROUTER_API_KEY", "optional": true }
   ],
   "learn": {
     "file": "skills/quickstart/SKILL.md"
