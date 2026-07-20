@@ -60,6 +60,22 @@ test("parseGroupsFromLlmResponse throws on invalid files field", () => {
   );
 });
 
+test("parseGroupsFromLlmResponse throws on invalid group field", () => {
+  const txt = JSON.stringify([{ group: 123, files: ["a.js"] }]);
+  assert.throws(
+    () => parseGroupsFromLlmResponse(txt),
+    { message: /invalid "group" field/ },
+  );
+});
+
+test("parseGroupsFromLlmResponse throws on invalid description field", () => {
+  const txt = JSON.stringify([{ group: "A", description: 42, files: ["a.js"] }]);
+  assert.throws(
+    () => parseGroupsFromLlmResponse(txt),
+    { message: /invalid "description" field/ },
+  );
+});
+
 test("parseGroupsFromLlmResponse throws on non-object group entry", () => {
   assert.throws(
     () => parseGroupsFromLlmResponse("[null]"),

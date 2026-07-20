@@ -2,6 +2,15 @@ const simpleGit = require("simple-git");
 
 const git = simpleGit();
 
+async function runGitOperation(description, operation) {
+  try {
+    return await operation();
+  } catch (error) {
+    const msg = error?.message ?? String(error);
+    throw new Error(`${description}: ${msg}`);
+  }
+}
+
 async function ensureStagedFiles(gitInstance) {
   const g =
     gitInstance && typeof gitInstance.diffSummary === "function" ? gitInstance : git;
@@ -27,4 +36,5 @@ async function ensureStagedFiles(gitInstance) {
 
 module.exports = {
   ensureStagedFiles,
+  runGitOperation,
 };

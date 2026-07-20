@@ -95,23 +95,32 @@ async function getRelevantFiles(options, gitInstance) {
 
 async function stageFiles(files, gitInstance) {
   if (!Array.isArray(files) || files.length === 0) return;
-  const g = (gitInstance && typeof gitInstance.add === "function") ? gitInstance : git;
+  const toStage = files.filter((f) => typeof f === "string" && f.length > 0);
+  if (toStage.length === 0) return;
+  const g = gitInstance && typeof gitInstance.add === "function" ? gitInstance : git;
   try {
-    await g.add(files.filter(f => typeof f === "string" && f.length > 0));
+    await g.add(toStage);
   } catch (error) {
-    console.error("❌ Failed to stage files:", error?.message ?? error);
+    const msg = error?.message ?? String(error);
+    throw new Error(`Failed to stage files: ${msg}`);
   }
 }
 
 async function unstageAll(gitInstance) {
-  const g = (gitInstance && typeof gitInstance.reset === "function") ? gitInstance : git;
+  const g = gitInstance && typeof gitInstance.reset === "function" ? gitInstance : git;
+  let staged;
   try {
-    const staged = await getStagedFiles(gitInstance);
-    if (staged.length > 0) {
-      await g.reset(["--", ...staged]);
-    }
+    staged = await getStagedFiles(gitInstance);
   } catch (error) {
-    console.error("❌ Failed to unstage files:", error?.message ?? error);
+    const msg = error?.message ?? String(error);
+    throw new Error(`Failed to list staged files for unstage: ${msg}`);
+  }
+  if (staged.length === 0) return;
+  try {
+    await g.reset(["--", ...staged]);
+  } catch (error) {
+    const msg = error?.message ?? String(error);
+    throw new Error(`Failed to unstage files: ${msg}`);
   }
 }
 

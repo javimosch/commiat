@@ -98,7 +98,12 @@ program
         console.log(`Settings saved to ${GLOBAL_CONFIG_PATH}`);
       }
     } else if (options.test) {
-      await testLlmCompletion();
+      try {
+        await testLlmCompletion();
+      } catch (error) {
+        console.error(`\n❌ Error: ${error?.message ?? String(error)}`);
+        process.exit(1);
+      }
     } else {
       console.log("Note: This command edits the GLOBAL configuration file.");
       console.log(
@@ -116,13 +121,27 @@ program
   .description(
     "Configure Ollama settings (enable/disable, base URL, model, fallback) in the GLOBAL config.",
   )
-  .action(configureOllama);
+  .action(async () => {
+    try {
+      await configureOllama();
+    } catch (error) {
+      console.error(`\n❌ Error: ${error?.message ?? String(error)}`);
+      process.exit(1);
+    }
+  });
 
 program
   .command("model select")
   .description(
     "Select an OpenRouter model using autocomplete search. Recommended: xiaomi/mimo-v2-flash",
   )
-  .action(selectModel);
+  .action(async () => {
+    try {
+      await selectModel();
+    } catch (error) {
+      console.error(`\n❌ Error: ${error?.message ?? String(error)}`);
+      process.exit(1);
+    }
+  });
 
 program.parse(process.argv);

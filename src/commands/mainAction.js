@@ -6,7 +6,7 @@ const variableProcessor = require("../variables");
 
 const { DEFAULT_CONVENTIONAL_FORMAT } = require("../core/constants");
 const { getDefaultMultiConfig } = require("../core/providerConfig");
-const { ensureStagedFiles } = require("../core/gitHelpers");
+const { ensureStagedFiles, runGitOperation } = require("../core/gitHelpers");
 const { promptUser } = require("../core/userPrompts");
 const { promptForLead } = require("../core/leadPrompt");
 const {
@@ -17,15 +17,6 @@ const {
 const { handleMultiCommit } = require("./multiCommit");
 
 const git = simpleGit();
-
-async function runGitOperation(description, operation) {
-  try {
-    return await operation();
-  } catch (error) {
-    const msg = error?.message ?? String(error);
-    throw new Error(`${description}: ${msg}`);
-  }
-}
 
 async function mainAction(options) {
   if (!options || typeof options !== "object") {
