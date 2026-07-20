@@ -40,14 +40,14 @@ function escapeRegex(str) {
 }
 
 function substituteVariablesInMessage(message, systemVarValues) {
-  if (!message || typeof message !== "string") return "";
-  let result = message.trim();
+  if (message == null) return "";
+  let result = String(message).trim();
+  if (!result) return result;
   if (!systemVarValues || typeof systemVarValues !== "object") return result;
 
   for (const varName in systemVarValues) {
     if (!Object.prototype.hasOwnProperty.call(systemVarValues, varName)) continue;
     const varValue = systemVarValues[varName];
-    if (varValue == null) continue;
     const placeholder = `{${varName}}`;
     const escapedName = escapeRegex(varName);
     const regex = new RegExp(`\\{${escapedName}\\}`, "g");
@@ -94,6 +94,9 @@ function buildCommitPrompt(diff, localConfig, systemVarValues) {
 }
 
 async function generateCommitMessage(diff, localConfig, systemVarValues, nonInteractive = false) {
+  if (!diff || typeof diff !== "string" || diff.trim().length === 0) {
+    throw new Error("Cannot generate commit message: staged diff is empty.");
+  }
   const llmConfig = getLlmProviderConfig();
   console.log(
     `Using provider: ${llmConfig.provider}, Model: ${llmConfig.model}${llmConfig.fallbackEnabled ? ", Fallback Enabled" : ""}`,

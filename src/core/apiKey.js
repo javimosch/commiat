@@ -40,13 +40,15 @@ function isOpenRouterConfigured() {
 async function getApiKey(promptIfNeeded = true, nonInteractive = false) {
   const envApiKey = process.env[CONFIG_KEY_API_KEY];
   if (envApiKey && envApiKey !== "YOUR_API_KEY_HERE") {
-    return envApiKey;
+    const trimmed = envApiKey.trim();
+    if (trimmed.length > 0) return trimmed;
   }
 
   const globalConfig = loadGlobalConfig();
   const configApiKey = globalConfig[CONFIG_KEY_API_KEY];
-  if (configApiKey) {
-    return configApiKey;
+  if (configApiKey && typeof configApiKey === "string") {
+    const trimmed = configApiKey.trim();
+    if (trimmed.length > 0) return trimmed;
   }
 
   if (promptIfNeeded && process.stdout.isTTY) {

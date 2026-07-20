@@ -58,6 +58,15 @@ async function promptForMissingVariableDescriptions(variables, config, nonIntera
   if (nonInteractive) {
     return false;
   }
+  if (!config || typeof config !== "object") {
+    return false;
+  }
+  if (!config.variables || typeof config.variables !== "object" || Array.isArray(config.variables)) {
+    config.variables = {};
+  }
+  if (!Array.isArray(variables)) {
+    return false;
+  }
   let configUpdated = false;
   // Filter out system variables AND 'type' AND 'msg' to find truly custom ones
   const customVariables = variables.filter(v =>

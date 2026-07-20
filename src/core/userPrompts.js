@@ -4,12 +4,16 @@ async function promptUser(initialMessage, nonInteractive = false) {
   if (typeof initialMessage !== "string") {
     return null;
   }
+  const trimmedMessage = initialMessage.trim();
+  if (!trimmedMessage) {
+    return null;
+  }
   if (nonInteractive) {
-    console.log(`Commit message: "${msg}"`);
-    return msg;
+    console.log(`Commit message: "${trimmedMessage}"`);
+    return trimmedMessage;
   }
 
-  let currentMessage = msg;
+  let currentMessage = trimmedMessage;
   while (true) {
     let action;
     try {

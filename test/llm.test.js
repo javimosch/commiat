@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const axios = require("axios");
 
+const { CONFIG_KEY_API_KEY } = require("../src/core/constants");
 const {
   callOllamaApi,
   callOpenRouterApi,
@@ -31,6 +32,8 @@ test("callOllamaApi enhances error with metadata", async () => {
 });
 
 test("callOpenRouterApi enhances error with metadata", async () => {
+  const prevKey = process.env[CONFIG_KEY_API_KEY];
+  process.env[CONFIG_KEY_API_KEY] = "test-key";
   const postStub = axios.post;
   axios.post = async () => {
     const err = new Error("Unauthorized");
@@ -46,12 +49,14 @@ test("callOpenRouterApi enhances error with metadata", async () => {
     assert.equal(e.isAuthenticationError, true);
   } finally {
     axios.post = postStub;
+    if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
+    else process.env[CONFIG_KEY_API_KEY] = prevKey;
   }
 });
 
 test("callOpenRouterApi prefers provider message and request id", async () => {
-  const prevKey = process.env.OPENROUTER_API_KEY;
-  process.env.OPENROUTER_API_KEY = "test-key";
+  const prevKey = process.env[CONFIG_KEY_API_KEY];
+  process.env[CONFIG_KEY_API_KEY] = "test-key";
 
   const postStub = axios.post;
   axios.post = async () => {
@@ -81,12 +86,14 @@ test("callOpenRouterApi prefers provider message and request id", async () => {
     );
   } finally {
     axios.post = postStub;
-    if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY;
-    else process.env.OPENROUTER_API_KEY = prevKey;
+    if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
+    else process.env[CONFIG_KEY_API_KEY] = prevKey;
   }
 });
 
 test("callOpenRouterWithPromptSizing retries on context limit error", async () => {
+  const prevKey = process.env[CONFIG_KEY_API_KEY];
+  process.env[CONFIG_KEY_API_KEY] = "test-key";
   const postStub = axios.post;
   let attempts = 0;
   axios.post = async (_, data) => {
@@ -105,6 +112,8 @@ test("callOpenRouterWithPromptSizing retries on context limit error", async () =
     assert.ok(attempts > 1);
   } finally {
     axios.post = postStub;
+    if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
+    else process.env[CONFIG_KEY_API_KEY] = prevKey;
   }
 });
 
@@ -145,8 +154,8 @@ test("callOllamaApi handles missing baseUrl gracefully", async () => {
 });
 
 test("callOpenRouterApi handles error thrown as null", async () => {
-  const prevKey = process.env.OPENROUTER_API_KEY;
-  process.env.OPENROUTER_API_KEY = "test-key";
+  const prevKey = process.env[CONFIG_KEY_API_KEY];
+  process.env[CONFIG_KEY_API_KEY] = "test-key";
   const postStub = axios.post;
   axios.post = async () => {
     throw null;
@@ -159,8 +168,8 @@ test("callOpenRouterApi handles error thrown as null", async () => {
     assert.ok(e);
   } finally {
     axios.post = postStub;
-    if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY;
-    else process.env.OPENROUTER_API_KEY = prevKey;
+    if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
+    else process.env[CONFIG_KEY_API_KEY] = prevKey;
   }
 });
 
@@ -176,8 +185,8 @@ test("formatOpenRouterErrorForCli handles null error", () => {
 });
 
 test("callOpenRouterWithPromptSizing handles empty prompt", async () => {
-  const prevKey = process.env.OPENROUTER_API_KEY;
-  process.env.OPENROUTER_API_KEY = "test-key";
+  const prevKey = process.env[CONFIG_KEY_API_KEY];
+  process.env[CONFIG_KEY_API_KEY] = "test-key";
   const postStub = axios.post;
   axios.post = async () => {
     return { data: { choices: [{ message: { content: "ok" } }] } };
@@ -187,12 +196,14 @@ test("callOpenRouterWithPromptSizing handles empty prompt", async () => {
     assert.equal(out, "ok");
   } finally {
     axios.post = postStub;
-    if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY;
-    else process.env.OPENROUTER_API_KEY = prevKey;
+    if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
+    else process.env[CONFIG_KEY_API_KEY] = prevKey;
   }
 });
 
 test("callOpenRouterWithPromptSizing uses middleOutCompress", async () => {
+  const prevKey = process.env[CONFIG_KEY_API_KEY];
+  process.env[CONFIG_KEY_API_KEY] = "test-key";
   const postStub = axios.post;
   let capturedPrompt;
   axios.post = async (_, data) => {
@@ -205,5 +216,7 @@ test("callOpenRouterWithPromptSizing uses middleOutCompress", async () => {
     assert.ok(capturedPrompt.includes("middle-out"));
   } finally {
     axios.post = postStub;
+    if (prevKey === undefined) delete process.env[CONFIG_KEY_API_KEY];
+    else process.env[CONFIG_KEY_API_KEY] = prevKey;
   }
 });
