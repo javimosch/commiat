@@ -45,16 +45,31 @@ async function promptUser(initialMessage, nonInteractive = false) {
             message: "Adjust the commit message:",
             default: currentMessage,
             validate: (input) =>
-              input.trim().length > 0 ? true : "Commit message cannot be empty.",
+              typeof input === "string" && input.trim().length > 0
+                ? true
+                : "Commit message cannot be empty.",
           },
         ]);
-        currentMessage = adjustedMessage.trim();
+        if (typeof adjustedMessage !== "string") {
+          console.error("\n⚠️ Invalid adjusted message received. Returning original message.");
+          return currentMessage;
+        }
+        const trimmed = adjustedMessage.trim();
+        if (!trimmed) {
+          console.error("\n⚠️ Adjusted message was empty. Returning original message.");
+          return currentMessage;
+        }
+        currentMessage = trimmed;
       } catch {
         console.error("\n⚠️ Adjust prompt interrupted. Returning original message.");
         return currentMessage;
       }
       continue;
     }
+    if (action === "cancel") {
+      return null;
+    }
+    console.warn(`\n⚠️ Unexpected prompt action "${action}". Commit cancelled.`);
     return null;
   }
 }

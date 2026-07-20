@@ -163,6 +163,32 @@ test("saveState handles empty object", () => {
   });
 });
 
+test("saveGlobalConfig rejects invalid keys", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    const store = freshStore(tmp);
+    assert.throws(
+      () => store.saveGlobalConfig({ "bad\nkey": "value" }),
+      /Invalid config key/,
+    );
+    assert.throws(
+      () => store.saveGlobalConfig({ "has=equals": "value" }),
+      /Invalid config key/,
+    );
+  });
+});
+
+test("saveState rejects invalid keys", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    const store = freshStore(tmp);
+    assert.throws(
+      () => store.saveState({ "bad\nkey": "value" }),
+      /Invalid state key/,
+    );
+  });
+});
+
 test("loadState returns empty object when state file missing", () => {
   withTempHomedir((tmp) => {
     fs.mkdirSync(commiatDir(tmp), { recursive: true });

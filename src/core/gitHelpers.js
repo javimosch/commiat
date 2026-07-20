@@ -3,6 +3,12 @@ const simpleGit = require("simple-git");
 const git = simpleGit();
 
 async function runGitOperation(description, operation) {
+  if (typeof description !== "string" || description.trim().length === 0) {
+    throw new Error("runGitOperation: description must be a non-empty string.");
+  }
+  if (typeof operation !== "function") {
+    throw new Error("runGitOperation: operation must be a function.");
+  }
   try {
     return await operation();
   } catch (error) {

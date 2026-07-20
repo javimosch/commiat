@@ -15,6 +15,17 @@ function freshEditor(tmpDir) {
   return require("../src/core/editor");
 }
 
+test("parseEditorCommand splits command and args", () => {
+  const { parseEditorCommand } = require("../src/core/editor");
+  assert.deepEqual(parseEditorCommand("code --wait"), {
+    command: "code",
+    args: ["--wait"],
+  });
+  assert.deepEqual(parseEditorCommand("  nano  "), { command: "nano", args: [] });
+  assert.equal(parseEditorCommand(""), null);
+  assert.equal(parseEditorCommand(null), null);
+});
+
 test("openConfigInEditor exits cleanly when spawn fails", () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "commiat-editor-"));
   fs.mkdirSync(tmpDir, { recursive: true });
