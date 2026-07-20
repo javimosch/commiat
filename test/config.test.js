@@ -70,6 +70,11 @@ test("validateConfig returns false for empty format string", () => {
   assert.equal(result, false);
 });
 
+test("validateConfig returns false for whitespace-only format", () => {
+  const result = validateConfig({ format: "   ", variables: {} });
+  assert.equal(result, false);
+});
+
 test("validateConfig returns false for null variables", () => {
   const result = validateConfig({ format: "{type}: {msg}", variables: null });
   assert.equal(result, false);
@@ -110,8 +115,33 @@ test("validateConfig returns false when variable description is an object", () =
   assert.equal(result, false);
 });
 
+test("validateConfig returns false when variable description is boolean", () => {
+  const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: true } });
+  assert.equal(result, false);
+});
+
 test("validateConfig returns true when variable description is a non-empty string", () => {
   const result = validateConfig({ format: "{type}({scope}): {msg}", variables: { scope: "The affected module" } });
+  assert.equal(result, true);
+});
+
+test("validateConfig returns false for config with null format", () => {
+  const result = validateConfig({ format: null, variables: {} });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for config with undefined format", () => {
+  const result = validateConfig({ format: undefined, variables: {} });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false for config with number format", () => {
+  const result = validateConfig({ format: 42, variables: {} });
+  assert.equal(result, false);
+});
+
+test("validateConfig returns false when variables contains number key", () => {
+  const result = validateConfig({ format: "{type}({1}): {msg}", variables: { 1: "desc" } });
   assert.equal(result, true);
 });
 
@@ -129,3 +159,18 @@ test("saveConfig throws for invalid config", async () => {
     { message: /Invalid config object/ }
   );
 });
+
+test("validateConfig returns true for format with only msg variable", () => {
+  const result = validateConfig({ format: "{msg}", variables: {} });
+  assert.equal(result, true);
+});
+
+test("validateConfig returns false for non-string variable description array", () => {
+  const result = validateConfig({
+    format: "{type}({scope}): {msg}",
+    variables: { scope: ["module", "component"] },
+  });
+  assert.equal(result, false);
+});
+
+

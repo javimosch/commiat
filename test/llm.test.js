@@ -108,6 +108,90 @@ test("callOpenRouterWithPromptSizing retries on context limit error", async () =
   }
 });
 
+test("callOllamaApi handles error thrown as string (non-Error)", async () => {
+  const postStub = axios.post;
+  axios.post = async () => {
+    throw "string error";
+  };
+  try {
+    await callOllamaApi("prompt", { baseUrl: "http://localhost:11434", model: "llama3" });
+    assert.fail("Should have thrown");
+  } catch (e) {
+    assert.equal(e.provider, "ollama");
+    // Non-Error thrown should still result in an error-like object
+    assert.ok(e instanceof Error || e.message);
+  } finally {
+    axios.post = postStub;
+  }
+});
+
+test("callOllamaApi handles missing baseUrl gracefully", async () => {
+  const postStub = axios.post;
+  axios.post = async () => {
+    const err = new Error("ECONNREFUSED");
+    err.code = "ECONNREFUSED";
+    err.request = {};
+    throw err;
+  };
+  try {
+    await callOllamaApi("prompt", { model: "llama3" });
+    assert.fail("Should have thrown");
+  } catch (e) {
+    assert.equal(e.provider, "ollama");
+    assert.ok(e.message);
+  } finally {
+    axios.post = postStub;
+  }
+});
+
+test("callOpenRouterApi handles error thrown as null", async () => {
+  const prevKey = process.env.OPENROUTER_API_KEY;
+  process.env.OPENROUTER_API_KEY = "test-key";
+  const postStub = axios.post;
+  axios.post = async () => {
+    throw null;
+  };
+  try {
+    await callOpenRouterApi("prompt", { model: "test" });
+    assert.fail("Should have thrown");
+  } catch (e) {
+    assert.equal(e.provider, "openrouter");
+    assert.ok(e);
+  } finally {
+    axios.post = postStub;
+    if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = prevKey;
+  }
+});
+
+test("formatOpenRouterErrorForCli handles error with no properties", () => {
+  const err = new Error("generic");
+  const out = formatOpenRouterErrorForCli(err);
+  assert.ok(out.includes("generic"));
+});
+
+test("formatOpenRouterErrorForCli handles null error", () => {
+  const out = formatOpenRouterErrorForCli(null);
+  assert.ok(typeof out === "string");
+});
+
+test("callOpenRouterWithPromptSizing handles empty prompt", async () => {
+  const prevKey = process.env.OPENROUTER_API_KEY;
+  process.env.OPENROUTER_API_KEY = "test-key";
+  const postStub = axios.post;
+  axios.post = async () => {
+    return { data: { choices: [{ message: { content: "ok" } }] } };
+  };
+  try {
+    const out = await callOpenRouterWithPromptSizing("", { model: "test" });
+    assert.equal(out, "ok");
+  } finally {
+    axios.post = postStub;
+    if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = prevKey;
+  }
+});
+
 test("callOpenRouterWithPromptSizing uses middleOutCompress", async () => {
   const postStub = axios.post;
   let capturedPrompt;

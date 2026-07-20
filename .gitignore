@@ -1,3 +1,6 @@
 .claude
 node_modules
 .env
+
+# Backup files created by sed in-place edits
+*.bak

@@ -15,8 +15,22 @@ NC='\033[0m' # No Color
 CLI_FILE="src/cli.js"
 DOCS_FILE="docs/index.html"
 
+# Cleanup handler to remove .bak files on exit
+cleanup() {
+    rm -f "${CLI_FILE}.bak" "${DOCS_FILE}.bak"
+}
+trap cleanup EXIT
+
+# Check for required tools
+for cmd in sed grep node; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo -e "${RED}❌ Error: Required tool '$cmd' not found${NC}"
+        exit 1
+    fi
+done
+
 # Check if model argument is provided
-if [ -z "$1" ]; then
+if [ $# -eq 0 ]; then
     echo -e "${RED}❌ Error: Model ID not provided${NC}"
     echo "Usage: $0 <model-id>"
     echo "Example: $0 'liquid/lfm-2-24b-a2b'"
@@ -26,6 +40,18 @@ if [ -z "$1" ]; then
 fi
 
 NEW_MODEL="$1"
+
+# Validate model ID: must not be empty after trimming and should contain a '/'
+TRIMMED="${NEW_MODEL## }"
+TRIMMED="${TRIMMED%% }"
+if [ -z "$TRIMMED" ]; then
+    echo -e "${RED}❌ Error: Model ID is empty or contains only spaces${NC}"
+    exit 1
+fi
+
+if [[ "$NEW_MODEL" != *"/"* ]]; then
+    echo -e "${YELLOW}⚠️  Warning: Model ID does not contain a '/' (expected format: provider/model)${NC}"
+fi
 
 # Validate that files exist
 if [ ! -f "$CLI_FILE" ]; then
