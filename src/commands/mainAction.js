@@ -16,12 +16,30 @@ const {
 
 const { handleMultiCommit } = require("./multiCommit");
 
-const git = simpleGit();
-
-async function mainAction(options) {
+function validateMainOptions(options) {
   if (!options || typeof options !== "object") {
     throw new Error("Invalid options provided to mainAction.");
   }
+  const booleanFlags = [
+    ["addAll", "--add-all"],
+    ["multi", "--multi"],
+    ["untracked", "--untracked"],
+    ["nonInteractive", "--non-interactive"],
+  ];
+  for (const [key, flagName] of booleanFlags) {
+    if (options[key] != null && typeof options[key] !== "boolean") {
+      throw new Error(`${flagName} must be a boolean.`);
+    }
+  }
+  if (options.verify != null && typeof options.verify !== "boolean") {
+    throw new Error("--verify must be a boolean.");
+  }
+}
+
+const git = simpleGit();
+
+async function mainAction(options) {
+  validateMainOptions(options);
   if (!options.multi && getDefaultMultiConfig()) {
     options.multi = true;
   }
@@ -138,4 +156,5 @@ async function mainAction(options) {
 
 module.exports = {
   mainAction,
+  validateMainOptions,
 };

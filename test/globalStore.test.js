@@ -175,6 +175,10 @@ test("saveGlobalConfig rejects invalid keys", () => {
       () => store.saveGlobalConfig({ "has=equals": "value" }),
       /Invalid config key/,
     );
+    assert.throws(
+      () => store.saveGlobalConfig({ ["__proto__"]: "polluted" }),
+      /Invalid config key/,
+    );
   });
 });
 
@@ -360,6 +364,9 @@ test("updateGlobalConfig throws on invalid key", () => {
     const store = freshStore(tmp);
     assert.throws(() => store.updateGlobalConfig(""), /Invalid key/);
     assert.throws(() => store.updateGlobalConfig(null), /Invalid key/);
+    assert.throws(() => store.updateGlobalConfig("bad\nkey"), /Invalid key/);
+    assert.throws(() => store.updateGlobalConfig("has=equals"), /Invalid key/);
+    assert.throws(() => store.updateGlobalConfig("__proto__"), /Invalid key/);
   });
 });
 
@@ -369,6 +376,8 @@ test("updateState throws on invalid key", () => {
     const store = freshStore(tmp);
     assert.throws(() => store.updateState(""), /Invalid key/);
     assert.throws(() => store.updateState(null), /Invalid key/);
+    assert.throws(() => store.updateState("bad\nkey"), /Invalid key/);
+    assert.throws(() => store.updateState("constructor"), /Invalid key/);
   });
 });
 
