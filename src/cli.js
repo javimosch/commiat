@@ -8,7 +8,7 @@ inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"))
 
 const packageJson = require("../package.json");
 
-const { mainAction } = require("./commands/mainAction");
+const { mainAction, validateMainOptions } = require("./commands/mainAction");
 const { testLlmCompletion } = require("./commands/testLlm");
 const { configureOllama } = require("./commands/ollamaConfig");
 const { selectModel } = require("./commands/modelSelect");
@@ -47,6 +47,12 @@ program
     }
     if (options.affix != null && typeof options.affix !== "string") {
       console.error("\n❌ Error: --affix must be a string.");
+      process.exit(1);
+    }
+    try {
+      validateMainOptions(options);
+    } catch (error) {
+      console.error(`\n❌ Error: ${error?.message ?? String(error)}`);
       process.exit(1);
     }
     if (!process.stdout.isTTY) {

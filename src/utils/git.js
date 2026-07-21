@@ -64,7 +64,9 @@ async function getStagedFiles(gitInstance) {
   try {
     const summary = await g.diffSummary(["--staged"]);
     if (!summary || !Array.isArray(summary.files)) return [];
-    return summary.files.map(f => f.file).filter(Boolean);
+    return summary.files
+      .map((f) => (f && typeof f.file === "string" ? f.file.trim() : ""))
+      .filter((file) => file.length > 0);
   } catch (error) {
     const msg = error?.message ?? String(error);
     throw new Error(`Failed to list staged files: ${msg}`);

@@ -57,8 +57,15 @@ function loadGlobalConfig() {
   }
 }
 
+const UNSAFE_CONFIG_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function isValidConfigKey(key) {
-  return typeof key === "string" && key.trim().length > 0 && !/[\r\n=]/.test(key);
+  return (
+    typeof key === "string" &&
+    key.trim().length > 0 &&
+    !/[\r\n=]/.test(key) &&
+    !UNSAFE_CONFIG_KEYS.has(key)
+  );
 }
 
 function saveGlobalConfig(configObj) {
@@ -94,8 +101,10 @@ function saveGlobalConfig(configObj) {
 }
 
 function updateGlobalConfig(key, value) {
-  if (!key || typeof key !== "string" || key.trim().length === 0) {
-    throw new Error("Invalid key provided to updateGlobalConfig");
+  if (!isValidConfigKey(key)) {
+    throw new Error(
+      `Invalid key provided to updateGlobalConfig: keys must be non-empty strings without newlines, "=", or unsafe names.`,
+    );
   }
   const currentConfig = loadGlobalConfig();
   currentConfig[key] = value;
@@ -152,8 +161,10 @@ function saveState(stateObj) {
 }
 
 function updateState(key, value) {
-  if (!key || typeof key !== "string" || key.trim().length === 0) {
-    throw new Error("Invalid key provided to updateState");
+  if (!isValidConfigKey(key)) {
+    throw new Error(
+      `Invalid key provided to updateState: keys must be non-empty strings without newlines, "=", or unsafe names.`,
+    );
   }
   const currentState = loadState();
   currentState[key] = value;

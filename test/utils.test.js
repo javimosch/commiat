@@ -74,6 +74,23 @@ test("getStagedFiles returns files from diffSummary", async () => {
   assert.deepEqual(files, ["a.js", "b.js"]);
 });
 
+test("getStagedFiles filters non-string and empty file entries", async () => {
+  const mockGit = {
+    diffSummary: async () => ({
+      files: [
+        { file: "a.js" },
+        { file: "" },
+        { file: "  b.js  " },
+        { file: null },
+        {},
+        null,
+      ],
+    }),
+  };
+  const files = await getStagedFiles(mockGit);
+  assert.deepEqual(files, ["a.js", "b.js"]);
+});
+
 test("getStagedFiles throws on git error", async () => {
   const mockGit = {
     diffSummary: async () => { throw new Error("git error"); },

@@ -57,17 +57,20 @@ async function selectModel() {
       return;
     }
 
-    if (typeof selected === "string" && selected.trim().length > 0) {
+    const trimmedSelected = typeof selected === "string" ? selected.trim() : "";
+    if (trimmedSelected.length > 0) {
       try {
-        updateGlobalConfig(CONFIG_KEY_OPENROUTER_MODEL, selected);
+        updateGlobalConfig(CONFIG_KEY_OPENROUTER_MODEL, trimmedSelected);
       } catch (error) {
         console.error(`Failed to save selected model: ${error?.message ?? String(error)}`);
         throw error;
       }
-      console.log(`\n✅ Set OpenRouter model to: ${selected}`);
+      console.log(`\n✅ Set OpenRouter model to: ${trimmedSelected}`);
+    } else if (selected != null) {
+      console.warn("\n⚠️ Ignoring invalid model selection (expected a non-empty string).");
     }
   } catch (error) {
-    console.error(`Failed to fetch models or select: ${error.message}`);
+    console.error(`Failed to fetch models or select: ${error?.message ?? String(error)}`);
     if (error.response) {
       console.error(`Status: ${error.response.status}`);
     }

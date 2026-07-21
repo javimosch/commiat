@@ -232,6 +232,30 @@ test("selectModel updates config when model selected", async () => {
   }
 });
 
+test("selectModel trims whitespace from selected model", async () => {
+  const tmpDir = require("fs").mkdtempSync("/tmp/commiat-test-");
+  try {
+    const getStub = axios.get;
+    axios.get = async () => ({
+      data: { data: [{ id: "custom/model", name: "Custom Model" }] },
+    });
+    const promptStub = inquirer.prompt;
+    inquirer.prompt = async () => ({ selected: "  custom/model  " });
+
+    const { selectModel, globalStore, origUpdate, origSave, updates } = createStubModules(tmpDir);
+    try {
+      await selectModel();
+      assert.equal(updates["COMMIAT_OPENROUTER_MODEL"], "custom/model");
+    } finally {
+      axios.get = getStub;
+      inquirer.prompt = promptStub;
+      restoreModules(globalStore, origUpdate, origSave);
+    }
+  } finally {
+    require("fs").rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("selectModel passes timeout option to axios.get", async () => {
   const { selectModel } = require("../src/commands/modelSelect");
   const getStub = axios.get;
