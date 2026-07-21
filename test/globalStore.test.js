@@ -271,6 +271,25 @@ test("ensureGlobalConfigFileExists creates config file", () => {
   });
 });
 
+test("ensureGlobalConfigFileExists throws on write failure", () => {
+  withTempHomedir((tmp) => {
+    fs.mkdirSync(commiatDir(tmp), { recursive: true });
+    const store = freshStore(tmp);
+    const origWrite = fs.writeFileSync;
+    fs.writeFileSync = () => {
+      throw new Error("disk full");
+    };
+    try {
+      assert.throws(
+        () => store.ensureGlobalConfigFileExists(),
+        /Failed to create global config file.*disk full/,
+      );
+    } finally {
+      fs.writeFileSync = origWrite;
+    }
+  });
+});
+
 test("saveGlobalConfig throws on invalid config object", () => {
   withTempHomedir((tmp) => {
     fs.mkdirSync(commiatDir(tmp), { recursive: true });

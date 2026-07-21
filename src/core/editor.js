@@ -17,7 +17,12 @@ function parseEditorCommand(editorEnv) {
 }
 
 function openConfigInEditor() {
-  ensureGlobalConfigFileExists();
+  try {
+    ensureGlobalConfigFileExists();
+  } catch (error) {
+    console.error(`\n❌ Error: ${error?.message ?? String(error)}`);
+    process.exit(1);
+  }
   const parsed = parseEditorCommand(process.env.EDITOR || "nano");
   if (!parsed) {
     console.error("\n❌ No editor configured. Set the EDITOR environment variable.");

@@ -33,6 +33,10 @@ test("detectVariables returns empty array for object input", () => {
   assert.deepEqual(detectVariables({}), []);
 });
 
+test("detectVariables excludes unsafe placeholder names", () => {
+  assert.deepEqual(detectVariables("{type}: {__proto__} {constructor}"), ["type"]);
+});
+
 test("promptForMissingVariableDescriptions skips prompts in non-interactive mode", async () => {
   const config = { format: "feat({scope}): {msg}", variables: {} };
   const result = await promptForMissingVariableDescriptions(["scope"], config, true);
