@@ -5,6 +5,7 @@ const {
   parseGroupsFromLlmResponse,
   normalizeMultiCommitGroups,
   extractFirstJsonArray,
+  sanitizeSelectedIndexes,
 } = require("../src/utils/multiCommit");
 
 test("parseGroupsFromLlmResponse parses plain JSON array", () => {
@@ -125,4 +126,14 @@ test("normalizeMultiCommitGroups throws when relevantFiles is not an array", () 
     () => normalizeMultiCommitGroups([], "not-an-array"),
     /relevantFiles must be an array/,
   );
+});
+
+test("sanitizeSelectedIndexes keeps valid unique indexes in range", () => {
+  assert.deepEqual(sanitizeSelectedIndexes([1, 0, 1, 2, 99, -1, "1.5"], 3), [0, 1, 2]);
+});
+
+test("sanitizeSelectedIndexes returns empty array for invalid input", () => {
+  assert.deepEqual(sanitizeSelectedIndexes(null, 3), []);
+  assert.deepEqual(sanitizeSelectedIndexes([], 3), []);
+  assert.deepEqual(sanitizeSelectedIndexes([0, 1], -1), []);
 });

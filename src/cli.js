@@ -122,7 +122,12 @@ program
       console.log(
         `For project-specific format, create a ${localConfigManager.LOCAL_CONFIG_FILENAME} file in your project root.`,
       );
-      openConfigInEditor();
+      try {
+        openConfigInEditor();
+      } catch (error) {
+        console.error(`\n❌ Error: ${error?.message ?? String(error)}`);
+        process.exit(1);
+      }
     }
   });
 

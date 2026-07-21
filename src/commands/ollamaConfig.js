@@ -95,7 +95,7 @@ async function configureOllama() {
     const modelInput = typeof answers.model === "string" ? answers.model.trim() : "";
     const finalBaseUrl = baseUrlInput || DEFAULT_OLLAMA_BASE_URL;
     const finalModel = modelInput || DEFAULT_OLLAMA_MODEL;
-    const finalFallback = answers.fallback;
+    const finalFallback = answers.fallback === true;
 
     const nextConfig = { ...loadGlobalConfig() };
     nextConfig[CONFIG_KEY_USE_OLLAMA] = "true";

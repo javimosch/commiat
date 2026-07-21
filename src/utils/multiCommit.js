@@ -147,9 +147,25 @@ function normalizeMultiCommitGroups(rawGroups, relevantFiles) {
   return { groups: groupsOut, warnings, unassignedFiles };
 }
 
+function sanitizeSelectedIndexes(indexes, groupCount) {
+  if (!Array.isArray(indexes)) return [];
+  const max = Number.isInteger(groupCount) && groupCount >= 0 ? groupCount : 0;
+  const seen = new Set();
+  const out = [];
+  for (const raw of indexes) {
+    const i = Number(raw);
+    if (!Number.isInteger(i) || i < 0 || i >= max) continue;
+    if (seen.has(i)) continue;
+    seen.add(i);
+    out.push(i);
+  }
+  return out.sort((a, b) => a - b);
+}
+
 module.exports = {
   parseGroupsFromLlmResponse,
   normalizeMultiCommitGroups,
   extractFirstJsonArray,
   stripMarkdownCodeFences,
+  sanitizeSelectedIndexes,
 };

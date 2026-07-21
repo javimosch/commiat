@@ -28,7 +28,10 @@ function detectVariables(format) {
   const matches = format.matchAll(VARIABLE_REGEX);
   const variables = new Set();
   for (const match of matches) {
-    variables.add(match[1]);
+    const name = match[1];
+    if (isSafeVariableKey(name)) {
+      variables.add(name);
+    }
   }
   variables.delete('msg');
   return Array.from(variables);
@@ -139,5 +142,6 @@ module.exports = {
   detectVariables,
   getSystemVariableValues,
   promptForMissingVariableDescriptions,
+  isSafeVariableKey,
   SYSTEM_VARIABLE_HANDLERS,
 };

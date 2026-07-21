@@ -221,7 +221,10 @@ async function handleMultiCommit(options) {
           },
         ]);
 
-        return { selectedIndexes: selectedIndexes || [], leave: false };
+        return {
+          selectedIndexes: multiCommitUtils.sanitizeSelectedIndexes(selectedIndexes, groups.length),
+          leave: false,
+        };
       } catch {
         console.warn("\n⚠️ Multi-commit prompt interrupted. Leaving session.");
         return { selectedIndexes: [], leave: true };

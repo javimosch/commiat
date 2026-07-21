@@ -4,6 +4,7 @@ const {
   CONFIG_KEY_OPENROUTER_MODEL,
 } = require("./constants");
 
+const { isSafeVariableKey, detectVariables } = require("../variables");
 const { loadGlobalConfig, fsLogError } = require("./globalStore");
 const { getLlmProviderConfig } = require("./providerConfig");
 const { isOpenRouterConfigured } = require("./apiKey");
@@ -19,16 +20,18 @@ function applyPrefixAffixToMessage(message, options) {
   let messageToPrompt = message.trim();
   if (!messageToPrompt) return messageToPrompt;
   if (!options || typeof options !== "object") return messageToPrompt;
-  if (!options.prefix && !options.affix) return messageToPrompt;
+  const prefix = typeof options.prefix === "string" ? options.prefix : "";
+  const affix = typeof options.affix === "string" ? options.affix : "";
+  if (!prefix && !affix) return messageToPrompt;
 
   const lines = messageToPrompt.split("\n");
   let firstLine = lines[0] || "";
 
-  if (options.prefix) {
-    firstLine = `${options.prefix}${options.prefix.endsWith(" ") ? "" : " "}${firstLine}`;
+  if (prefix) {
+    firstLine = `${prefix}${prefix.endsWith(" ") ? "" : " "}${firstLine}`;
   }
-  if (options.affix) {
-    firstLine = `${firstLine}${options.affix.startsWith(" ") ? "" : " "}${options.affix}`;
+  if (affix) {
+    firstLine = `${firstLine}${affix.startsWith(" ") ? "" : " "}${affix}`;
   }
 
   lines[0] = firstLine;
@@ -47,6 +50,7 @@ function substituteVariablesInMessage(message, systemVarValues) {
 
   for (const varName in systemVarValues) {
     if (!Object.prototype.hasOwnProperty.call(systemVarValues, varName)) continue;
+    if (!isSafeVariableKey(varName)) continue;
     const varValue = systemVarValues[varName];
     const placeholder = `{${varName}}`;
     const escapedName = escapeRegex(varName);
@@ -77,6 +81,7 @@ function buildCommitPrompt(diff, localConfig, systemVarValues) {
     prompt += "Variable descriptions (use these to fill the format placeholders):\n";
     for (const variable in customVariables) {
       if (!Object.prototype.hasOwnProperty.call(customVariables, variable)) continue;
+      if (!isSafeVariableKey(variable)) continue;
       const description = customVariables[variable];
       if (typeof description !== "string" || description.trim() === "") continue;
       if (format.includes(`{${variable}}`)) {
@@ -85,9 +90,10 @@ function buildCommitPrompt(diff, localConfig, systemVarValues) {
     }
   }
 
-  const variablesInFormat = require("../variables").detectVariables(format);
+  const variablesInFormat = detectVariables(format);
   const relevantSystemVars = {};
   variablesInFormat.forEach((v) => {
+    if (!isSafeVariableKey(v)) return;
     if (systemVarValues[v] !== undefined) relevantSystemVars[v] = systemVarValues[v];
   });
 

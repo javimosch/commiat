@@ -108,3 +108,24 @@ test("buildCommitPrompt treats non-string diff as empty", () => {
   assert.ok(prompt.includes("```diff\n\n```"));
   assert.ok(!prompt.includes("null"));
 });
+
+test("applyPrefixAffixToMessage ignores non-string prefix and affix", () => {
+  const msg = "feat: add feature";
+  assert.equal(applyPrefixAffixToMessage(msg, { prefix: 123, affix: true }), "feat: add feature");
+});
+
+test("substituteVariablesInMessage skips unsafe variable keys", () => {
+  const msg = "fix: {component} {__proto__}";
+  const vals = { component: "auth", __proto__: "polluted" };
+  assert.equal(substituteVariablesInMessage(msg, vals), "fix: auth {__proto__}");
+});
+
+test("buildCommitPrompt skips unsafe custom variable keys", () => {
+  const localConfig = {
+    format: "{type}: {component} {__proto__}",
+    variables: { component: "auth module", __proto__: "polluted" },
+  };
+  const prompt = buildCommitPrompt("diff content", localConfig, {});
+  assert.ok(prompt.includes("{component}: auth module"));
+  assert.ok(!prompt.includes("polluted"));
+});

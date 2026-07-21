@@ -35,8 +35,13 @@ function ensureGlobalConfigFileExists() {
   const cfgPath = getGlobalConfigPath();
   ensureGlobalConfigDirExists();
   if (!fs.existsSync(cfgPath)) {
-    fs.writeFileSync(cfgPath, "", "utf8");
-    console.log(`Created empty global config file at ${cfgPath}`);
+    try {
+      fs.writeFileSync(cfgPath, "", "utf8");
+      console.log(`Created empty global config file at ${cfgPath}`);
+    } catch (error) {
+      const msg = error?.message ?? String(error);
+      throw new Error(`Failed to create global config file "${cfgPath}": ${msg}`);
+    }
   }
 }
 
@@ -101,7 +106,12 @@ function ensureGlobalStateFileExists() {
   const statePath = getGlobalStatePath();
   ensureGlobalConfigDirExists();
   if (!fs.existsSync(statePath)) {
-    fs.writeFileSync(statePath, "", "utf8");
+    try {
+      fs.writeFileSync(statePath, "", "utf8");
+    } catch (error) {
+      const msg = error?.message ?? String(error);
+      throw new Error(`Failed to create global state file "${statePath}": ${msg}`);
+    }
   }
 }
 

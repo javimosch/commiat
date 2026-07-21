@@ -113,7 +113,7 @@ async function mainAction(options) {
     const messageToPrompt = applyPrefixAffixToMessage(initialCommitMessage, options);
     const finalCommitMessage = await promptUser(messageToPrompt, options.nonInteractive);
 
-    if (finalCommitMessage) {
+    if (finalCommitMessage && typeof finalCommitMessage === "string" && finalCommitMessage.trim()) {
       const commitOptions = {};
       if (options.verify === false) {
         commitOptions["--no-verify"] = null;
